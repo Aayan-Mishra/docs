@@ -1,5 +1,17 @@
 ---
-title: "Artemis RL Gym"
+title: "Introduction to Artemis RL Gym"
+description: "A production-ready distributed reinforcement learning framework for Large Language Models"
+---
+
+<div align="center">
+
+# Artemis RL Gym
+
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+**A Production-Ready Distributed Reinforcement Learning Framework for Large Language Models**temis RL Gym"
 description: "A production-ready distributed reinforcement learning framework for Large Language Models"
 ---
 
@@ -87,9 +99,60 @@ Artemis provides universal support for popular open-source LLM families:
 
 Artemis features a sophisticated multi-tier distributed architecture optimized for LLM training:
 
-<Frame>
-  <img src="/images/artemis-architecture.png" alt="Artemis RL Gym Architecture" />
-</Frame>
+```mermaid
+graph TB
+    subgraph "Client Applications"
+        CLI[CLI Interface]
+        API[Python API]
+        WEB[Web Dashboard]
+    end
+    
+    subgraph "Artemis Core"
+        TH[Trainer Hub]
+        IE[Inference Engine]
+        EO[Environment Orchestrator]
+    end
+    
+    subgraph "Infrastructure"
+        CL[Communication Layer]
+        MS[Monitoring System]
+        ASF[Auto-Scaling & Fault Tolerance]
+    end
+    
+    subgraph "Algorithms"
+        GRPO[GRPO]
+        DPO[DPO]
+        PPO[PPO]
+    end
+    
+    subgraph "Models & Environments"
+        LLM[LLM Models<br/>50+ Supported]
+        ENV[RL Environments<br/>Math, Code, Games]
+    end
+    
+    CLI --> TH
+    API --> TH
+    WEB --> TH
+    
+    TH --> IE
+    TH --> EO
+    TH --> CL
+    
+    IE --> LLM
+    EO --> ENV
+    
+    TH --> GRPO
+    TH --> DPO
+    TH --> PPO
+    
+    CL --> MS
+    CL --> ASF
+    
+    style TH fill:#16A34A,stroke:#15803D,color:#fff
+    style IE fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style EO fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style CL fill:#F59E0B,stroke:#D97706,color:#fff
+```
 
 ### Core Principles
 
@@ -118,7 +181,7 @@ Get started with Artemis RL Gym in minutes:
 <Steps>
 <Step title="Install Artemis">
   ```bash
-  pip install artemis-rl-gym
+  pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git
   ```
 </Step>
 

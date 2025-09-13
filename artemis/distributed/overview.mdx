@@ -7,9 +7,65 @@ Artemis RL Gym features a sophisticated distributed system designed to scale rei
 
 ## Architecture Overview
 
-<Frame>
-  <img src="/images/distributed-architecture.png" alt="Artemis Distributed Architecture" />
-</Frame>
+```mermaid
+graph TB
+    subgraph "Distributed Training Hub"
+        TH[Trainer Hub<br/>Central Coordinator]
+        TH --> LB[Load Balancing &<br/>Worker Management]
+        TH --> TC[Trajectory Collection &<br/>Batch Processing]
+        TH --> MC[Model Checkpointing &<br/>Version Control]
+    end
+    
+    subgraph "Inference Engines"
+        IE[Auto-Scaling]
+        VL[vLLM/SGLang]
+        BO[Batch Optimization]
+    end
+    
+    subgraph "Environment Orchestrator"
+        EO[Environment Orchestrator]
+        EO --> MATH[Math]
+        EO --> GAMES[Games]
+        EO --> CODE[Code]
+        EO --> REASON[Reasoning]
+        EO --> CONV[Conversation]
+        EO --> TOOLS[Tools]
+    end
+    
+    subgraph "Communication Layer"
+        CL[Communication Layer]
+        CL --> IMB[FREE In-Memory Broker<br/>Default]
+        CL --> RMQ[Redis/RabbitMQ Support<br/>Optional]
+        CL --> MRC[Message Routing &<br/>Compression]
+    end
+    
+    subgraph "Monitoring System"
+        MS[Monitoring System]
+        MS --> RTD[Real-time<br/>Dashboards]
+        MS --> AM[Alert Management]
+        MS --> PA[Performance<br/>Analytics]
+    end
+    
+    subgraph "Auto-Scaling & Fault Tolerance"
+        ASF[Auto-Scaling & Fault Tolerance]
+        ASF --> HC[Health Checks]
+        ASF --> AR[Automatic Recovery]
+        ASF --> PD[Production Deployment]
+    end
+    
+    TH <--> IE
+    TH <--> EO
+    TH <--> CL
+    IE <--> CL
+    EO <--> CL
+    CL <--> MS
+    CL <--> ASF
+    
+    style TH fill:#16A34A,stroke:#15803D,color:#fff
+    style CL fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style MS fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style ASF fill:#F59E0B,stroke:#D97706,color:#fff
+```
 
 The distributed system consists of:
 
@@ -244,6 +300,23 @@ sequenceDiagram
 
 ### Single-Node Development
 
+```mermaid
+graph TD
+    subgraph "Single Development Node"
+        T[Trainer Hub]
+        I[Inference Engine]
+        E[Environment]
+        
+        T --> I
+        T --> E
+        I --> E
+    end
+    
+    style T fill:#16A34A,stroke:#15803D,color:#fff
+    style I fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style E fill:#8B5CF6,stroke:#7C3AED,color:#fff
+```
+
 Perfect for development and testing:
 
 ```python
@@ -260,6 +333,49 @@ deployment_config = {
 ```
 
 ### Multi-Node Production
+
+```mermaid
+graph TB
+    subgraph "Trainer Node"
+        TN[Trainer Hub]
+        CO[Coordinator]
+    end
+    
+    subgraph "Inference Cluster"
+        IN1[Inference Node 1<br/>2x GPU]
+        IN2[Inference Node 2<br/>2x GPU]
+        LB[Load Balancer]
+    end
+    
+    subgraph "Environment Cluster"
+        EN1[Environment Node 1<br/>32 CPU]
+        EN2[Environment Node 2<br/>32 CPU]
+        EN3[Environment Node 3<br/>32 CPU]
+    end
+    
+    subgraph "Infrastructure"
+        NET[Cluster Network<br/>10.0.0.0/16]
+        SD[Service Discovery<br/>Consul]
+        LBN[Load Balancer<br/>Nginx]
+    end
+    
+    TN --> LB
+    LB --> IN1
+    LB --> IN2
+    
+    TN --> EN1
+    TN --> EN2
+    TN --> EN3
+    
+    NET --> SD
+    NET --> LBN
+    
+    style TN fill:#16A34A,stroke:#15803D,color:#fff
+    style LB fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style EN1 fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style EN2 fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style EN3 fill:#8B5CF6,stroke:#7C3AED,color:#fff
+```
 
 Distributed across multiple machines:
 
@@ -297,6 +413,53 @@ cluster_config = {
 ```
 
 ### Cloud-Native Kubernetes
+
+```mermaid
+graph TB
+    subgraph "Kubernetes Cluster"
+        subgraph "Trainer Deployment"
+            TP1[Trainer Pod 1]
+            TP2[Trainer Pod 2]
+            TS[Trainer Service<br/>LoadBalancer]
+        end
+        
+        subgraph "Inference Deployment"
+            IP1[Inference Pod 1<br/>GPU Node]
+            IP2[Inference Pod 2<br/>GPU Node]
+            IP3[Inference Pod 3<br/>GPU Node]
+            IS[Inference Service<br/>ClusterIP]
+        end
+        
+        subgraph "Environment Deployment"
+            EP1[Environment Pod 1]
+            EP2[Environment Pod 2]
+            EP3[Environment Pod 3]
+            EP4[Environment Pod 4]
+            ES[Environment Service<br/>ClusterIP]
+        end
+        
+        subgraph "Storage & Config"
+            CM[ConfigMap<br/>artemis-config]
+            PVC[PersistentVolume<br/>Model Storage]
+            SEC[Secret<br/>API Keys]
+        end
+    end
+    
+    TS --> IS
+    TS --> ES
+    
+    TP1 --> CM
+    TP2 --> CM
+    IP1 --> PVC
+    IP2 --> PVC
+    IP3 --> PVC
+    EP1 --> SEC
+    
+    style TS fill:#16A34A,stroke:#15803D,color:#fff
+    style IS fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style ES fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style CM fill:#F59E0B,stroke:#D97706,color:#fff
+```
 
 Deploy on Kubernetes with auto-scaling:
 

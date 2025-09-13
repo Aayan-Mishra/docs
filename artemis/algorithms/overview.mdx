@@ -5,6 +5,54 @@ description: "Deep dive into the reinforcement learning algorithms powering Arte
 
 Artemis RL Gym implements state-of-the-art reinforcement learning algorithms specifically optimized for Large Language Model training. Each algorithm addresses different aspects of LLM training challenges, from sample efficiency to preference alignment.
 
+## Algorithm Architecture
+
+```mermaid
+graph TD
+    subgraph "Policy-Based Methods"
+        GRPO[GRPO<br/>Group Relative Policy Optimization]
+        PPO[PPO<br/>Proximal Policy Optimization]
+    end
+    
+    subgraph "Preference-Based Methods"
+        DPO[DPO<br/>Direct Preference Optimization]
+        RLHF[RLHF<br/>RL from Human Feedback]
+    end
+    
+    subgraph "Core Components"
+        AC[Actor-Critic]
+        RB[Reward Modeling]
+        PE[Policy Evaluation]
+        PU[Policy Updates]
+    end
+    
+    subgraph "Training Pipeline"
+        DATA[Training Data]
+        ENV[Environment]
+        REWARD[Reward Function]
+        MODEL[LLM Model]
+    end
+    
+    GRPO --> AC
+    PPO --> AC
+    DPO --> RB
+    RLHF --> RB
+    
+    AC --> PE
+    AC --> PU
+    RB --> PE
+    
+    DATA --> ENV
+    ENV --> REWARD
+    REWARD --> MODEL
+    MODEL --> PE
+    
+    style GRPO fill:#16A34A,stroke:#15803D,color:#fff
+    style DPO fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style PPO fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style RLHF fill:#F59E0B,stroke:#D97706,color:#fff
+```
+
 ## Algorithm Comparison
 
 <Tabs>

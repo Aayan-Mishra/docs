@@ -25,13 +25,13 @@ While a GPU is recommended for optimal performance, Artemis can run on CPU-only 
   Install the package using pip:
 
   ```bash
-  pip install artemis-rl-gym
+  pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git
   ```
 
   For development installations with additional tools:
 
   ```bash
-  pip install artemis-rl-gym[dev]
+  pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git[dev]
   ```
 </Step>
 
@@ -185,9 +185,38 @@ If you enabled monitoring (`monitoring=True`), access the real-time dashboard:
 2. View training progress, system metrics, and performance analytics
 3. Monitor distributed workers and auto-scaling events
 
-<Frame>
-  <img src="/images/artemis-dashboard.png" alt="Artemis Monitoring Dashboard" />
-</Frame>
+```mermaid
+graph LR
+    subgraph "Monitoring Dashboard"
+        TR[Training Progress]
+        SM[System Metrics]
+        PA[Performance Analytics]
+        DW[Distributed Workers]
+        AE[Auto-scaling Events]
+    end
+    
+    subgraph "Real-time Data"
+        RM[Reward Metrics]
+        LM[Loss Metrics]
+        TM[Throughput Metrics]
+        CPU[CPU Usage]
+        MEM[Memory Usage]
+        GPU[GPU Usage]
+    end
+    
+    TR --> RM
+    TR --> LM
+    SM --> CPU
+    SM --> MEM
+    SM --> GPU
+    PA --> TM
+    DW --> AE
+    
+    style TR fill:#16A34A,stroke:#15803D,color:#fff
+    style SM fill:#0EA5E9,stroke:#0284C7,color:#fff
+    style PA fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style DW fill:#F59E0B,stroke:#D97706,color:#fff
+```
 
 ## Common Configuration Options
 
