@@ -1,0 +1,264 @@
+---
+title: "Tutorials Overview"
+description: "Comprehensive tutorials for mastering Artemis RL Gym - from basic fine-tuning to advanced distributed training"
+---
+
+# Tutorials Overview
+
+Welcome to the Artemis RL Gym tutorials! These comprehensive guides will take you from basic concepts to advanced distributed training techniques. Each tutorial includes complete code examples, configuration details, and troubleshooting guidance.
+
+## Learning Paths
+
+Choose your learning path based on your experience level and goals:
+
+<CardGroup cols={2}>
+  <Card title="🚀 Beginner Path" href="#beginner-tutorials">
+    Start with basic fine-tuning and work your way up to more advanced techniques.
+    
+    **Recommended order**: DPO → PPO → GRPO → Distributed
+  </Card>
+  <Card title="⚡ Advanced Path" href="#advanced-tutorials">
+    Jump into distributed training and optimization techniques for large-scale deployments.
+    
+    **Recommended order**: Distributed → GRPO → PPO → DPO
+  </Card>
+</CardGroup>
+
+## Tutorial Categories
+
+### Algorithm-Focused Tutorials
+
+<CardGroup cols={1}>
+  <Card title="Fine-tuning Qwen3-4B with DPO" href="/artemis/tutorials/qwen3-4b-dpo" icon="brain">
+    **Difficulty**: ⭐⭐⭐ Intermediate  
+    **Duration**: 2-3 hours  
+    **Prerequisites**: Basic Python, transformers knowledge
+    
+    Learn Direct Preference Optimization (DPO) by fine-tuning Qwen3-4B model with human preference data. Covers dataset preparation, model configuration, training process, and evaluation.
+    
+    **What you'll learn**:
+    - DPO theory and implementation
+    - Preference dataset processing
+    - Model evaluation techniques
+    - Production deployment strategies
+    
+    **Hardware requirements**: 16GB+ GPU memory
+  </Card>
+  
+  <Card title="Fine-tuning with PPO" href="/artemis/tutorials/ppo-tutorial" icon="robot">
+    **Difficulty**: ⭐⭐⭐⭐ Advanced  
+    **Duration**: 3-4 hours  
+    **Prerequisites**: RL concepts, PPO understanding
+    
+    Master Proximal Policy Optimization for language model training. Includes reward model setup, curriculum learning, and multi-task training strategies.
+    
+    **What you'll learn**:
+    - PPO implementation for LLMs
+    - Reward model integration
+    - Advanced training strategies
+    - Performance optimization
+    
+    **Hardware requirements**: 24GB+ GPU memory for Llama-3.1-8B
+  </Card>
+  
+  <Card title="Group Relative Policy Optimization (GRPO)" href="/artemis/tutorials/grpo-tutorial" icon="network-wired">
+    **Difficulty**: ⭐⭐⭐⭐⭐ Expert  
+    **Duration**: 4-6 hours  
+    **Prerequisites**: Distributed computing, advanced RL
+    
+    Advanced distributed training with GRPO for improved sample efficiency and stability. Covers group management, hierarchical optimization, and large-scale deployment.
+    
+    **What you'll learn**:
+    - GRPO theory and implementation
+    - Group-based optimization strategies
+    - Distributed training coordination
+    - Advanced evaluation techniques
+    
+    **Hardware requirements**: Multiple GPUs (4+ recommended)
+  </Card>
+</CardGroup>
+
+### Infrastructure-Focused Tutorials
+
+<CardGroup cols={1}>
+  <Card title="Multi-GPU Distributed Training" href="/artemis/tutorials/distributed-training" icon="server">
+    **Difficulty**: ⭐⭐⭐⭐⭐ Expert  
+    **Duration**: 4-8 hours  
+    **Prerequisites**: Distributed systems, multi-GPU experience
+    
+    Comprehensive guide to scaling training across multiple GPUs and nodes. Covers data parallel, model parallel, pipeline parallel, and hybrid strategies.
+    
+    **What you'll learn**:
+    - Distributed training strategies
+    - Communication optimization
+    - Performance monitoring
+    - Troubleshooting distributed issues
+    
+    **Hardware requirements**: Multi-GPU cluster or multiple nodes
+  </Card>
+</CardGroup>
+
+## Difficulty Levels
+
+### ⭐⭐⭐ Intermediate
+- Basic understanding of machine learning
+- Familiarity with Python and PyTorch
+- Some experience with transformers
+- Single GPU setup
+
+### ⭐⭐⭐⭐ Advanced  
+- Solid understanding of reinforcement learning
+- Experience with distributed computing concepts
+- Multi-GPU environment access
+- Performance optimization knowledge
+
+### ⭐⭐⭐⭐⭐ Expert
+- Deep expertise in distributed systems
+- Advanced RL algorithm knowledge
+- Cluster computing experience
+- Production deployment experience
+
+## Hardware Requirements Summary
+
+| Tutorial | Min GPU Memory | Recommended Setup | Training Time |
+|----------|----------------|-------------------|---------------|
+| **DPO (Qwen3-4B)** | 16GB | RTX 4090 (24GB) | 3-4 hours |
+| **PPO (Llama-3.1-8B)** | 24GB | A100 (40GB) | 4-6 hours |
+| **GRPO (Llama-3.1-8B)** | 24GB × 4 | 4× A100 (40GB) | 2-4 hours |
+| **Distributed (Llama-3.1-8B)** | Variable | Multi-node cluster | 1-8 hours |
+
+## Getting Started
+
+### Prerequisites Setup
+
+Before starting any tutorial, ensure you have the basic requirements:
+
+```bash
+# Install Artemis RL Gym
+git clone https://github.com/noema-research/artemis-rl-gym.git
+cd artemis-rl-gym
+pip install -e .
+
+# Install common dependencies
+pip install transformers==4.36.0 torch==2.1.0
+pip install datasets==2.14.0 accelerate==0.25.0
+pip install wandb==0.16.0  # For experiment tracking
+```
+
+### Environment Verification
+
+Test your setup before starting:
+
+```python
+import torch
+import transformers
+import artemis
+
+print(f"PyTorch version: {torch.__version__}")
+print(f"Transformers version: {transformers.__version__}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+print(f"GPU count: {torch.cuda.device_count()}")
+
+# Test Artemis installation
+from artemis.models import PPOModel
+print("Artemis RL Gym installed successfully!")
+```
+
+## Tutorial Features
+
+Each tutorial includes:
+
+### 📊 Complete Code Examples
+- Full working implementations
+- Step-by-step explanations
+- Configuration templates
+- Best practices
+
+### 🔧 Troubleshooting Guides
+- Common issues and solutions
+- Performance optimization tips
+- Memory management strategies
+- Debugging techniques
+
+### 📈 Performance Benchmarks
+- Hardware performance comparisons
+- Scaling efficiency metrics
+- Training time estimates
+- Resource utilization data
+
+### 🚀 Production Deployment
+- Model export and serving
+- Inference optimization
+- Monitoring and logging
+- Real-world deployment strategies
+
+## Community and Support
+
+### Getting Help
+
+If you encounter issues while following the tutorials:
+
+1. **Check the troubleshooting section** in each tutorial
+2. **Search [GitHub Issues](https://github.com/noema-research/artemis-rl-gym/issues)** for similar problems
+3. **Review the [API Reference](/artemis/api-reference)** for detailed documentation
+
+### Contributing
+
+Help improve these tutorials:
+
+- **Report issues** or suggest improvements
+- **Submit code examples** for different use cases  
+- **Share performance benchmarks** from your hardware
+- **Create new tutorials** for specific domains
+
+## What's Next?
+
+After completing the tutorials, explore:
+
+- **[Core Components](/artemis/core/overview)** - Deep dive into Artemis architecture
+- **[RL Algorithms](/artemis/algorithms/overview)** - Advanced algorithm implementations
+- **[Examples](/artemis/examples/overview)** - Real-world use cases and applications
+- **[API Reference](/artemis/api-reference)** - Complete API documentation
+
+## Tutorial Roadmap
+
+### Coming Soon
+
+- **Fine-tuning Large Code Models** - Specialized techniques for code generation
+- **Multi-Modal RL Training** - Vision-language model optimization
+- **Federated RL Training** - Privacy-preserving distributed learning
+- **Custom Reward Model Training** - Building domain-specific reward models
+
+### Suggested Learning Order
+
+<Tabs>
+  <Tab title="Research Focus">
+    1. **DPO Tutorial** - Understand preference optimization
+    2. **PPO Tutorial** - Learn policy gradient methods
+    3. **GRPO Tutorial** - Advanced distributed optimization
+    4. **Distributed Training** - Scale to large experiments
+  </Tab>
+  <Tab title="Production Focus">
+    1. **Distributed Training** - Infrastructure setup
+    2. **GRPO Tutorial** - Efficient large-scale training
+    3. **PPO Tutorial** - Robust training techniques
+    4. **DPO Tutorial** - Final model alignment
+  </Tab>
+  <Tab title="Algorithm Focus">
+    1. **PPO Tutorial** - Foundation reinforcement learning
+    2. **DPO Tutorial** - Modern preference learning
+    3. **GRPO Tutorial** - State-of-the-art methods
+    4. **Distributed Training** - Scaling strategies
+  </Tab>
+</Tabs>
+
+<Note>
+These tutorials are designed to be hands-on and practical. Each includes complete working examples that you can run and modify. Start with the tutorial that best matches your current experience level and goals.
+</Note>
+
+## Resources
+
+- **Paper Collection**: [Artemis RL Research Papers](https://github.com/noema-research/artemis-rl-gym/blob/main/docs/papers.md)
+- **Model Zoo**: [Pre-trained Models](https://huggingface.co/noema-research)
+- **Community**: [GitHub Discussions](https://github.com/noema-research/artemis-rl-gym/discussions)
+- **Updates**: [Release Notes](https://github.com/noema-research/artemis-rl-gym/releases)

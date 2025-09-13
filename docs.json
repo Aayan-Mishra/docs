@@ -42,6 +42,16 @@
         ]
       },
       {
+        "group": "Tutorials",
+        "pages": [
+          "artemis/tutorials/index",
+          "artemis/tutorials/qwen3-4b-dpo",
+          "artemis/tutorials/ppo-tutorial",
+          "artemis/tutorials/grpo-tutorial",
+          "artemis/tutorials/distributed-training"
+        ]
+      },
+      {
         "group": "Examples & Tutorials",
         "pages": [
           "artemis/examples/overview"
@@ -60,25 +70,13 @@
           "anchor": "GitHub",
           "href": "https://github.com/noema-research/artemis-rl-gym",
           "icon": "github"
-        },
-        {
-          "anchor": "Discord",
-          "href": "https://discord.gg/artemis-rl",
-          "icon": "discord"
-        },
-        {
-          "anchor": "Research",
-          "href": "https://noema-research.com/papers",
-          "icon": "file-text"
         }
       ]
     }
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/noema_research",
-      "github": "https://github.com/noema-research",
-      "linkedin": "https://linkedin.com/company/noema-research"
+      "github": "https://github.com/noema-research"
     }
   }
 }
