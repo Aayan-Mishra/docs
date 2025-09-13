@@ -32,7 +32,8 @@
       {
         "group": "RL Algorithms",
         "pages": [
-          "artemis/algorithms/overview"
+          "artemis/algorithms/overview",
+          "artemis/algorithms/prism"
         ]
       },
       {

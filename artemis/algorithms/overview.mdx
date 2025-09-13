@@ -12,6 +12,7 @@ graph TD
     subgraph "Policy-Based Methods"
         GRPO[GRPO<br/>Group Relative Policy Optimization]
         PPO[PPO<br/>Proximal Policy Optimization]
+        PRISM[PRISM<br/>Predictive Reinforcement via<br/>Integrated Stochastic Modelling]
     end
     
     subgraph "Preference-Based Methods"
@@ -35,6 +36,7 @@ graph TD
     
     GRPO --> AC
     PPO --> AC
+    PRISM --> AC
     DPO --> RB
     RLHF --> RB
     
@@ -50,12 +52,31 @@ graph TD
     style GRPO fill:#16A34A,stroke:#15803D,color:#fff
     style DPO fill:#0EA5E9,stroke:#0284C7,color:#fff
     style PPO fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style PRISM fill:#FF6B6B,stroke:#E55555,color:#fff
     style RLHF fill:#F59E0B,stroke:#D97706,color:#fff
 ```
 
 ## Algorithm Comparison
 
 <Tabs>
+<Tab title="PRISM">
+  **Predictive Reinforcement via Integrated Stochastic Modelling**
+  
+  Revolutionary model-based RL algorithm with uncertainty-aware exploration and risk-sensitive learning.
+  
+  **Best for:**
+  - Complex planning tasks
+  - Sparse reward environments
+  - Risk-sensitive applications
+  - Sample-limited domains
+  
+  **Key advantages:**
+  - Multi-step predictive planning
+  - Uncertainty-guided exploration
+  - Risk-adjusted value functions
+  - Superior sample efficiency
+</Tab>
+
 <Tab title="GRPO">
   **Group Relative Policy Optimization**
   
@@ -107,13 +128,15 @@ graph TD
 
 ## Algorithm Performance Comparison
 
-| Metric | GRPO | DPO | PPO |
-|--------|------|-----|-----|
-| **Sample Efficiency** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
-| **Training Stability** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Human Alignment** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
-| **Implementation Complexity** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Computational Cost** | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| Metric | PRISM | GRPO | DPO | PPO |
+|--------|-------|------|-----|-----|
+| **Sample Efficiency** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Training Stability** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **Human Alignment** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐ |
+| **Planning Capability** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐ | ⭐ |
+| **Risk Awareness** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐ |
+| **Implementation Complexity** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Computational Cost** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
 
 ## Core Algorithm Interface
 
@@ -139,6 +162,21 @@ class BaseRLAlgorithm(ABC):
     def load_checkpoint(self, path: str) -> None:
         """Load algorithm state"""
 ```
+
+## Featured Algorithm: PRISM
+
+🔮 **[PRISM (Predictive Reinforcement via Integrated Stochastic Modelling)](/artemis/algorithms/prism)** is Noema Research's breakthrough RL algorithm that combines:
+
+- **🧠 Predictive Models**: Learn environment dynamics for multi-step planning
+- **🎯 Smart Exploration**: Uncertainty-guided exploration for maximum learning efficiency  
+- **⚖️ Risk Awareness**: Risk-adjusted value functions for robust decision-making
+- **📈 Sample Efficiency**: Superior performance with fewer environment interactions
+
+<Card title="🚀 Learn PRISM" href="/artemis/algorithms/prism" icon="brain">
+  Dive deep into PRISM's mathematical foundation, implementation details, and advanced features. Perfect for researchers and practitioners working on complex RL tasks.
+</Card>
+
+---
 
 ## Group Relative Policy Optimization (GRPO)
 
@@ -557,6 +595,22 @@ asyncio.run(ppo_training_example())
 ## Algorithm Selection Guide
 
 <Tabs>
+<Tab title="Use PRISM When">
+  - Complex multi-step planning is required
+  - Working with sparse or delayed rewards
+  - Risk-sensitive decision making is important
+  - Sample efficiency is critical
+  - You need uncertainty quantification
+  - Working with dynamic/uncertain environments
+
+  **Example scenarios:**
+  - Strategic game playing
+  - Financial decision making
+  - Autonomous systems
+  - Medical diagnosis/treatment
+  - Scientific discovery tasks
+</Tab>
+
 <Tab title="Use GRPO When">
   - Training large language models (>1B parameters)
   - Sample efficiency is critical
