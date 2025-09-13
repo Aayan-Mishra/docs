@@ -9,29 +9,29 @@ Artemis RL Gym implements state-of-the-art reinforcement learning algorithms spe
 
 ```mermaid
 graph TD
-    subgraph "Policy-Based Methods"
-        GRPO[GRPO<br/>Group Relative Policy Optimization]
-        PPO[PPO<br/>Proximal Policy Optimization]
-        PRISM[PRISM<br/>Predictive Reinforcement via<br/>Integrated Stochastic Modelling]
+    subgraph PolicyBased ["Policy-Based Methods"]
+        GRPO["GRPO<br/>Group Relative Policy Optimization"]
+        PPO["PPO<br/>Proximal Policy Optimization"]
+        PRISM["PRISM<br/>Predictive Reinforcement via<br/>Integrated Stochastic Modelling"]
     end
     
-    subgraph "Preference-Based Methods"
-        DPO[DPO<br/>Direct Preference Optimization]
-        RLHF[RLHF<br/>RL from Human Feedback]
+    subgraph PreferenceBased ["Preference-Based Methods"]
+        DPO["DPO<br/>Direct Preference Optimization"]
+        RLHF["RLHF<br/>RL from Human Feedback"]
     end
     
-    subgraph "Core Components"
-        AC[Actor-Critic]
-        RB[Reward Modeling]
-        PE[Policy Evaluation]
-        PU[Policy Updates]
+    subgraph CoreComponents ["Core Components"]
+        AC["Actor-Critic"]
+        RB["Reward Modeling"]
+        PE["Policy Evaluation"]
+        PU["Policy Updates"]
     end
     
-    subgraph "Training Pipeline"
-        DATA[Training Data]
-        ENV[Environment]
-        REWARD[Reward Function]
-        MODEL[LLM Model]
+    subgraph TrainingPipeline ["Training Pipeline"]
+        DATA["Training Data"]
+        ENV["Environment"]
+        REWARD["Reward Function"]
+        MODEL["LLM Model"]
     end
     
     GRPO --> AC
