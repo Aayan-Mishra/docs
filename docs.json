@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "name": "Artemis RL Gym Documentation",
-  "theme": "mint",
+  "theme": "maple",
   "logo": {
     "dark": "/logo/dark.svg",
     "light": "/logo/light.svg"
