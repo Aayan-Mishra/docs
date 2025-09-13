@@ -1,0 +1,740 @@
+---
+title: "Environments"
+description: "Interactive scenarios for training and evaluating RL agents"
+---
+
+Environments in Artemis RL Gym provide the interactive scenarios where agents learn and are evaluated. They define the observation space, action space, reward structure, and dynamics that agents must master. This guide covers the available environments and how to create custom ones.
+
+## Environment Architecture
+
+All environments in Artemis extend the `BaseEnvironment` class, providing a consistent interface for agent interaction:
+
+```python
+from artemis.core.env import BaseEnvironment, Observation, Action, StepResult
+
+class BaseEnvironment(ABC):
+    @abstractmethod
+    def reset(self) -> Observation:
+        """Reset environment to initial state"""
+        
+    @abstractmethod  
+    def step(self, action: Action) -> StepResult:
+        """Execute action and return next state"""
+        
+    @abstractmethod
+    def close(self) -> None:
+        """Cleanup environment resources"""
+        
+    def get_observation_space(self) -> Dict[str, Any]:
+        """Return observation space specification"""
+        
+    def get_action_space(self) -> Dict[str, Any]:
+        """Return action space specification"""
+```
+
+## Built-in Environments
+
+<Tabs>
+<Tab title="Mathematical Reasoning">
+  Environments focused on mathematical problem solving and quantitative reasoning.
+
+  <CardGroup cols={2}>
+  <Card title="Math Environment" icon="calculator">
+    General mathematical reasoning across multiple domains
+  </Card>
+  
+  <Card title="GSM8K" icon="graduation-cap">
+    Grade school math word problems dataset
+  </Card>
+  </CardGroup>
+</Tab>
+
+<Tab title="Code Generation">
+  Programming and software development task environments.
+
+  <CardGroup cols={2}>
+  <Card title="Code Environment" icon="code">
+    Multi-language code generation and debugging
+  </Card>
+  
+  <Card title="HumanEval" icon="file-code">
+    Python programming challenges dataset
+  </Card>
+  </CardGroup>
+</Tab>
+
+<Tab title="Conversation">
+  Natural language dialogue and interaction environments.
+
+  <CardGroup cols={2}>
+  <Card title="Conversation Environment" icon="comments">
+    Multi-turn dialogue scenarios
+  </Card>
+  
+  <Card title="Role-Play Environment" icon="masks-theater">
+    Specialized conversation with defined personas
+  </Card>
+  </CardGroup>
+</Tab>
+
+<Tab title="Reasoning">
+  General reasoning and problem-solving environments.
+
+  <CardGroup cols={2}>
+  <Card title="MMLU" icon="brain">
+    Massive multitask language understanding
+  </Card>
+  
+  <Card title="Logic Environment" icon="puzzle-piece">
+    Logical reasoning and inference tasks
+  </Card>
+  </CardGroup>
+</Tab>
+</Tabs>
+
+## Mathematical Reasoning Environment
+
+The mathematical reasoning environment provides dynamic problem generation across multiple mathematical domains:
+
+### Configuration
+
+```python
+from artemis.environments.math_env import MathematicalReasoningEnvironment, MathProblem
+
+@dataclass
+class MathProblem:
+    id: str
+    category: str  # algebra, calculus, geometry, etc.
+    difficulty: int  # 1-10 scale
+    problem_statement: str
+    expected_answer: Union[str, float, int]
+    solution_steps: Optional[List[str]] = None
+    hints: Optional[List[str]] = None
+    time_limit: int = 300
+
+env = MathematicalReasoningEnvironment(
+    categories=["algebra", "geometry", "calculus"],
+    difficulty_range=(3, 7),
+    step_by_step_evaluation=True,
+    provide_hints=True
+)
+```
+
+### Key Features
+
+<AccordionGroup>
+<Accordion title="Dynamic Problem Generation">
+  Problems are generated based on specified categories and difficulty levels:
+
+  ```python
+  # Configure problem types
+  env_config = {
+      "categories": {
+          "algebra": {"weight": 0.4, "max_difficulty": 8},
+          "geometry": {"weight": 0.3, "max_difficulty": 6}, 
+          "calculus": {"weight": 0.3, "max_difficulty": 9}
+      },
+      "adaptive_difficulty": True,  # Adjust based on performance
+      "problem_pool_size": 1000
+  }
+  ```
+</Accordion>
+
+<Accordion title="Step-by-Step Evaluation">
+  Evaluates intermediate reasoning steps, not just final answers:
+
+  ```python
+  # Example evaluation
+  observation = env.reset()  # Get math problem
+  action = agent.get_action(observation)  # Generate solution steps
+
+  # Environment evaluates each step
+  step_result = env.step(action)
+  print(f"Step reward: {step_result.reward}")
+  print(f"Step feedback: {step_result.info['step_feedback']}")
+  ```
+</Accordion>
+
+<Accordion title="Hint System">
+  Provides progressive hints when agents struggle:
+
+  ```python
+  # Automatic hint provision
+  if step_result.info.get('struggling', False):
+      hint = env.get_hint(difficulty_level="easy")
+      modified_observation = env.add_hint_to_observation(hint)
+  ```
+</Accordion>
+</AccordionGroup>
+
+### Usage Example
+
+```python
+import asyncio
+from artemis.environments.math_env import MathematicalReasoningEnvironment
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+
+async def math_training_example():
+    # Configure math-optimized agent
+    agent_config = LLMAgentConfig(
+        model_name="WizardLM/WizardMath-7B-V1.1",
+        temperature=0.3,  # Lower temperature for precision
+        max_new_tokens=512
+    )
+    
+    agent = LLMAgent(agent_config)
+    
+    # Configure environment
+    env = MathematicalReasoningEnvironment(
+        categories=["algebra", "geometry"],
+        difficulty_range=(4, 8),
+        step_by_step_evaluation=True,
+        reward_intermediate_steps=True
+    )
+    
+    # Training loop
+    for episode in range(100):
+        observation = env.reset()
+        total_reward = 0
+        step_count = 0
+        
+        print(f"\nEpisode {episode}")
+        print(f"Problem: {observation.problem_statement}")
+        
+        while not env.done and step_count < 10:
+            action = agent.get_action(observation)
+            step_result = env.step(action)
+            
+            total_reward += step_result.reward
+            step_count += 1
+            
+            print(f"Step {step_count}: {action.response}")
+            print(f"Reward: {step_result.reward:.3f}")
+            
+            if step_result.info.get('correct_answer', False):
+                print("✅ Correct answer!")
+                break
+                
+            observation = step_result.observation
+        
+        print(f"Total reward: {total_reward:.3f}")
+
+asyncio.run(math_training_example())
+```
+
+## Code Generation Environment
+
+The code generation environment supports multiple programming languages and provides comprehensive code evaluation:
+
+### Configuration
+
+```python
+from artemis.environments.code_env import CodeGenerationEnvironment, ProgrammingLanguage
+
+class ProgrammingLanguage(Enum):
+    PYTHON = "python"
+    JAVASCRIPT = "javascript"
+    JAVA = "java"
+    CPP = "cpp"
+    GO = "go"
+    RUST = "rust"
+
+env = CodeGenerationEnvironment(
+    languages=[ProgrammingLanguage.PYTHON, ProgrammingLanguage.JAVASCRIPT],
+    difficulty_levels=["beginner", "intermediate", "advanced"],
+    enable_execution=True,
+    security_sandbox=True,
+    timeout_seconds=30
+)
+```
+
+### Features
+
+<Tabs>
+<Tab title="Multi-Language Support">
+  ```python
+  # Language-specific configuration
+  language_configs = {
+      ProgrammingLanguage.PYTHON: {
+          "interpreter": "python3.9",
+          "allowed_imports": ["math", "random", "itertools"],
+          "forbidden_functions": ["exec", "eval", "open"]
+      },
+      ProgrammingLanguage.JAVASCRIPT: {
+          "runtime": "node",
+          "version": "18.x",
+          "allowed_modules": ["lodash", "moment"]
+      }
+  }
+  ```
+</Tab>
+
+<Tab title="Automated Testing">
+  ```python
+  @dataclass
+  class TestCase:
+      input_data: Any
+      expected_output: Any
+      timeout: float = 5.0
+      memory_limit: int = 128  # MB
+      
+  # Example test cases
+  test_cases = [
+      TestCase([1, 2, 3], 6),           # sum function
+      TestCase([1, 1, 1], 3),           # edge case
+      TestCase([], 0),                  # empty input
+      TestCase(list(range(1000)), 499500)  # performance test
+  ]
+  ```
+</Tab>
+
+<Tab title="Code Quality Analysis">
+  ```python
+  # Quality metrics evaluated
+  quality_metrics = {
+      "correctness": 0.9,      # Test case pass rate
+      "efficiency": 0.8,       # Time/space complexity
+      "readability": 0.7,      # Code style and clarity
+      "security": 0.95,        # Security best practices
+      "maintainability": 0.6   # Code structure
+  }
+  ```
+</Tab>
+</Tabs>
+
+### Usage Example
+
+```python
+from artemis.environments.code_env import CodeGenerationEnvironment, ProgrammingLanguage
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+
+async def code_training_example():
+    # Code-optimized agent
+    agent_config = LLMAgentConfig(
+        model_name="deepseek-ai/deepseek-coder-6.7b-instruct",
+        temperature=0.1,  # Low temperature for precision
+        max_new_tokens=1024  # Longer sequences for code
+    )
+    
+    agent = LLMAgent(agent_config)
+    
+    # Code environment
+    env = CodeGenerationEnvironment(
+        languages=[ProgrammingLanguage.PYTHON],
+        difficulty_levels=["beginner", "intermediate"],
+        enable_execution=True,
+        provide_feedback=True
+    )
+    
+    for episode in range(50):
+        observation = env.reset()
+        
+        print(f"\nEpisode {episode}")
+        print(f"Task: {observation.problem_description}")
+        print(f"Function signature: {observation.function_signature}")
+        
+        # Generate code
+        action = agent.get_action(observation)
+        step_result = env.step(action)
+        
+        print(f"Generated code:\n{action.code}")
+        print(f"Test results: {step_result.info['test_results']}")
+        print(f"Quality score: {step_result.reward:.3f}")
+        
+        if step_result.info.get('all_tests_passed', False):
+            print("✅ All tests passed!")
+
+asyncio.run(code_training_example())
+```
+
+## Conversation Environment
+
+The conversation environment enables training of dialogue systems across various scenarios:
+
+### Configuration
+
+```python
+from artemis.environments.conversation_env import ConversationEnvironment
+
+env = ConversationEnvironment(
+    scenarios=["customer_support", "tutoring", "interview"],
+    persona_types=["helpful", "critical", "neutral"],
+    max_turns=15,
+    context_memory=True,
+    emotional_modeling=True
+)
+```
+
+### Scenario Types
+
+<AccordionGroup>
+<Accordion title="Customer Support">
+  Simulates customer service interactions:
+
+  ```python
+  scenario_config = {
+      "scenario_type": "customer_support",
+      "customer_profiles": ["frustrated", "confused", "urgent"],
+      "product_domains": ["software", "hardware", "billing"],
+      "resolution_types": ["technical", "policy", "escalation"]
+  }
+  ```
+</Accordion>
+
+<Accordion title="Educational Tutoring">
+  Teaching and explanation scenarios:
+
+  ```python
+  tutoring_config = {
+      "scenario_type": "tutoring", 
+      "subjects": ["math", "science", "programming"],
+      "student_levels": ["beginner", "intermediate", "advanced"],
+      "teaching_styles": ["socratic", "direct", "collaborative"]
+  }
+  ```
+</Accordion>
+
+<Accordion title="Professional Interview">
+  Job interview simulation:
+
+  ```python
+  interview_config = {
+      "scenario_type": "interview",
+      "roles": ["software_engineer", "data_scientist", "manager"],
+      "interview_types": ["technical", "behavioral", "case_study"],
+      "difficulty_progression": True
+  }
+  ```
+</Accordion>
+</AccordionGroup>
+
+## Dataset Environments
+
+Artemis includes environments based on popular benchmarks and datasets:
+
+### GSM8K Environment
+
+```python
+from artemis.environments.dataset_envs.gsm8k import GSM8KEnvironment
+
+env = GSM8KEnvironment(
+    split="train",  # or "test"
+    max_steps=10,
+    reward_shaping=True,
+    intermediate_rewards=True,
+    shuffle_problems=True
+)
+
+# Automatic problem loading and evaluation
+observation = env.reset()  # Loads a GSM8K problem
+action = agent.get_action(observation)  # Solve the problem
+result = env.step(action)  # Automatic evaluation
+```
+
+### MMLU Environment
+
+```python
+from artemis.environments.dataset_envs.mmlu import MMLUEnvironment
+
+# Covers 57 subjects across multiple domains
+env = MMLUEnvironment(
+    subjects=["mathematics", "physics", "computer_science"],
+    difficulty_filter=["college_level"],
+    few_shot_examples=5,
+    explanation_required=True
+)
+```
+
+### HumanEval Environment
+
+```python
+from artemis.environments.dataset_envs.human_eval import HumanEvalEnvironment
+
+env = HumanEvalEnvironment(
+    subset="basic",  # or "advanced"
+    execution_timeout=10,
+    security_sandbox=True,
+    provide_test_cases=True
+)
+```
+
+## Creating Custom Environments
+
+You can create specialized environments for your specific use cases:
+
+### Basic Custom Environment
+
+```python
+from artemis.core.env import BaseEnvironment, Observation, Action, StepResult
+from dataclasses import dataclass
+from typing import Any, Dict
+
+@dataclass
+class BusinessScenario:
+    company_type: str
+    market_condition: str
+    problem_description: str
+    stakeholders: List[str]
+    constraints: List[str]
+    success_criteria: Dict[str, float]
+
+class BusinessStrategyEnvironment(BaseEnvironment):
+    """Custom environment for business strategy training"""
+    
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
+        self.company_types = ["startup", "enterprise", "nonprofit"]
+        self.market_conditions = ["growth", "recession", "stable", "volatile"]
+        self.current_scenario = None
+        self.step_count = 0
+        self.max_steps = config.get("max_steps", 5)
+        
+    def reset(self) -> Observation:
+        """Generate new business scenario"""
+        self.current_scenario = self._generate_scenario()
+        self.step_count = 0
+        
+        return Observation(
+            text=self._format_scenario_prompt(),
+            metadata={
+                "scenario_id": self.current_scenario.company_type,
+                "difficulty": self._calculate_difficulty(),
+                "available_actions": ["analyze", "strategize", "implement"]
+            }
+        )
+    
+    def step(self, action: Action) -> StepResult:
+        """Evaluate business strategy response"""
+        self.step_count += 1
+        
+        # Evaluate response quality
+        reward = self._evaluate_business_response(action.text)
+        
+        # Check if scenario is complete
+        done = (self.step_count >= self.max_steps or 
+                self._is_strategy_complete(action.text))
+        
+        # Generate next observation if not done
+        next_observation = None
+        if not done:
+            next_observation = self._generate_followup_prompt(action.text)
+        
+        return StepResult(
+            observation=next_observation,
+            reward=reward,
+            done=done,
+            info={
+                "strategy_quality": reward,
+                "implementation_feasibility": self._assess_feasibility(action.text),
+                "stakeholder_alignment": self._check_stakeholder_alignment(action.text)
+            }
+        )
+    
+    def _generate_scenario(self) -> BusinessScenario:
+        """Generate random business scenario"""
+        import random
+        
+        return BusinessScenario(
+            company_type=random.choice(self.company_types),
+            market_condition=random.choice(self.market_conditions),
+            problem_description=self._generate_problem_description(),
+            stakeholders=self._select_stakeholders(),
+            constraints=self._generate_constraints(),
+            success_criteria=self._define_success_criteria()
+        )
+    
+    def _evaluate_business_response(self, response: str) -> float:
+        """Evaluate the quality of business strategy response"""
+        score = 0.0
+        
+        # Check for key components
+        if "analysis" in response.lower():
+            score += 0.2
+        if "strategy" in response.lower():
+            score += 0.3
+        if "implementation" in response.lower():
+            score += 0.2
+        if "risk" in response.lower():
+            score += 0.1
+        if "timeline" in response.lower():
+            score += 0.1
+        if "budget" in response.lower():
+            score += 0.1
+            
+        return min(score, 1.0)
+    
+    def get_observation_space(self) -> Dict[str, Any]:
+        return {
+            "type": "text",
+            "max_length": 2000,
+            "encoding": "utf-8"
+        }
+    
+    def get_action_space(self) -> Dict[str, Any]:
+        return {
+            "type": "text",
+            "max_length": 1000,
+            "required_sections": ["analysis", "strategy", "implementation"]
+        }
+
+# Usage
+config = {
+    "max_steps": 3,
+    "difficulty_level": "intermediate",
+    "industry_focus": "technology"
+}
+
+business_env = BusinessStrategyEnvironment(config)
+```
+
+### Advanced Custom Environment
+
+```python
+class MultiModalEnvironment(BaseEnvironment):
+    """Environment supporting text, images, and structured data"""
+    
+    def __init__(self, config):
+        super().__init__(config)
+        self.modalities = config.get("modalities", ["text", "image"])
+        self.vision_processor = None
+        
+        if "image" in self.modalities:
+            from transformers import CLIPProcessor, CLIPModel
+            self.vision_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+            self.vision_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+    
+    def reset(self) -> Observation:
+        # Generate multi-modal observation
+        observation_data = {}
+        
+        if "text" in self.modalities:
+            observation_data["text"] = self._generate_text_prompt()
+            
+        if "image" in self.modalities:
+            observation_data["image"] = self._generate_or_load_image()
+            
+        if "structured" in self.modalities:
+            observation_data["data"] = self._generate_structured_data()
+        
+        return Observation(
+            multimodal_data=observation_data,
+            modalities=self.modalities
+        )
+    
+    def step(self, action: Action) -> StepResult:
+        # Evaluate multi-modal response
+        total_reward = 0.0
+        
+        for modality in self.modalities:
+            if hasattr(action, f"{modality}_response"):
+                modality_reward = self._evaluate_modality_response(
+                    modality, getattr(action, f"{modality}_response")
+                )
+                total_reward += modality_reward
+        
+        # Average across modalities
+        final_reward = total_reward / len(self.modalities)
+        
+        return StepResult(
+            observation=None,  # Single-step environment
+            reward=final_reward,
+            done=True,
+            info={"modality_scores": {mod: 0.8 for mod in self.modalities}}
+        )
+```
+
+## Environment Best Practices
+
+<Tip>
+**Reward Design**: Create reward functions that provide meaningful feedback at each step. Avoid sparse rewards that only give feedback at the end of an episode.
+</Tip>
+
+<Warning>
+**Security**: When creating environments that execute code or interact with external systems, always implement proper sandboxing and security measures.
+</Warning>
+
+<Note>
+**Performance**: For environments that generate large amounts of data, consider implementing caching and lazy loading to improve performance.
+</Note>
+
+### Environment Optimization
+
+<Tabs>
+<Tab title="Caching">
+  ```python
+  from functools import lru_cache
+  import pickle
+
+  class OptimizedEnvironment(BaseEnvironment):
+      def __init__(self, config):
+          super().__init__(config)
+          self.problem_cache = {}
+          
+      @lru_cache(maxsize=1000)
+      def _generate_problem(self, seed: int, difficulty: int):
+          """Cache generated problems"""
+          return self._expensive_problem_generation(seed, difficulty)
+      
+      def save_cache(self, filepath: str):
+          """Persist cache to disk"""
+          with open(filepath, 'wb') as f:
+              pickle.dump(self.problem_cache, f)
+  ```
+</Tab>
+
+<Tab title="Parallel Processing">
+  ```python
+  import multiprocessing as mp
+  from concurrent.futures import ProcessPoolExecutor
+
+  class ParallelEnvironment(BaseEnvironment):
+      def __init__(self, config):
+          super().__init__(config)
+          self.num_workers = config.get("num_workers", mp.cpu_count())
+          self.executor = ProcessPoolExecutor(max_workers=self.num_workers)
+      
+      def evaluate_batch(self, actions: List[Action]) -> List[float]:
+          """Evaluate multiple actions in parallel"""
+          futures = [
+              self.executor.submit(self._evaluate_single, action)
+              for action in actions
+          ]
+          return [future.result() for future in futures]
+  ```
+</Tab>
+
+<Tab title="Memory Management">
+  ```python
+  import gc
+  import weakref
+
+  class MemoryEfficientEnvironment(BaseEnvironment):
+      def __init__(self, config):
+          super().__init__(config)
+          self.max_cache_size = config.get("max_cache_size", 100)
+          self.cache = weakref.WeakValueDictionary()
+          
+      def step(self, action):
+          result = super().step(action)
+          
+          # Periodic cleanup
+          if len(self.cache) > self.max_cache_size:
+              self._cleanup_cache()
+              gc.collect()
+              
+          return result
+  ```
+</Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="RL Algorithms" icon="calculator" href="/artemis/algorithms/overview">
+  Learn about the algorithms that drive agent learning in these environments
+</Card>
+
+<Card title="Distributed Training" icon="network-wired" href="/artemis/distributed/overview">
+  Scale your environment interactions across multiple nodes
+</Card>
+</CardGroup>

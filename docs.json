@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Noema Research Documentation",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#6366F1",
+    "light": "#8B5CF6",
+    "dark": "#4F46E5"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -48,12 +48,56 @@
         ]
       },
       {
+        "tab": "Artemis RL Gym",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "artemis/introduction",
+              "artemis/quickstart"
+            ]
+          },
+          {
+            "group": "Core Components",
+            "pages": [
+              "artemis/core/overview",
+              "artemis/core/agents",
+              "artemis/core/environments"
+            ]
+          },
+          {
+            "group": "RL Algorithms",
+            "pages": [
+              "artemis/algorithms/overview"
+            ]
+          },
+          {
+            "group": "Distributed System",
+            "pages": [
+              "artemis/distributed/overview"
+            ]
+          },
+          {
+            "group": "Examples & Tutorials",
+            "pages": [
+              "artemis/examples/overview"
+            ]
+          }
+        ]
+      },
+      {
         "tab": "API reference",
         "groups": [
           {
             "group": "API documentation",
             "pages": [
               "api-reference/introduction"
+            ]
+          },
+          {
+            "group": "Artemis API",
+            "pages": [
+              "artemis/api-reference/introduction"
             ]
           },
           {
@@ -71,19 +115,19 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "GitHub",
+          "href": "https://github.com/noema-research/artemis-rl-gym",
+          "icon": "github"
         },
         {
-          "anchor": "Community",
-          "href": "https://mintlify.com/community",
-          "icon": "slack"
+          "anchor": "Discord Community",
+          "href": "https://discord.gg/artemis-rl",
+          "icon": "discord"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Research Papers",
+          "href": "https://noema-research.com/papers",
+          "icon": "file-text"
         }
       ]
     }
@@ -95,14 +139,14 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "Contact",
+        "href": "mailto:contact@noema-research.com"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Get Started",
+      "href": "https://docs.noema-research.com/artemis/quickstart"
     }
   },
   "contextual": {
@@ -119,9 +163,9 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "x": "https://x.com/noema_research",
+      "github": "https://github.com/noema-research",
+      "linkedin": "https://linkedin.com/company/noema-research"
     }
   }
 }

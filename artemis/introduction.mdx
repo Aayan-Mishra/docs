@@ -1,0 +1,178 @@
+---
+title: "Artemis RL Gym"
+description: "A production-ready distributed reinforcement learning framework for Large Language Models"
+---
+
+<div align="center">
+
+![Artemis RL Gym](/images/artemis-logo.png)
+
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+**A Production-Ready Distributed Reinforcement Learning Framework for Large Language Models**
+
+</div>
+
+Artemis RL Gym is an enterprise-grade reinforcement learning framework specifically designed for training Large Language Models (LLMs) at scale. Built from the ground up for production environments, it combines cutting-edge RL algorithms with distributed computing capabilities to deliver unparalleled performance and reliability.
+
+## Key Features
+
+<CardGroup cols={2}>
+<Card title="Production-Ready" icon="rocket" href="/artemis/quickstart">
+  Built for enterprise deployments with comprehensive monitoring and fault tolerance
+</Card>
+
+<Card title="Zero-Cost Scaling" icon="dollar-sign" href="/artemis/distributed/communication">
+  In-memory message broker eliminates Redis/RabbitMQ costs while maintaining full functionality
+</Card>
+
+<Card title="LLM-Optimized" icon="brain" href="/artemis/core/llm-agent">
+  Native support for 50+ open-source models with intelligent detection and optimization
+</Card>
+
+<Card title="Truly Distributed" icon="network-wired" href="/artemis/distributed/overview">
+  Auto-scaling inference engines, environment orchestration, and fault-tolerant communication
+</Card>
+
+<Card title="Enterprise Monitoring" icon="chart-line" href="/artemis/distributed/monitoring">
+  Real-time dashboards, alerting, and comprehensive analytics
+</Card>
+
+<Card title="Battle-Tested" icon="shield-halved" href="/artemis/deployment">
+  Production-grade health checks, automatic recovery, and deployment management
+</Card>
+</CardGroup>
+
+## Supported Model Families
+
+Artemis provides universal support for popular open-source LLM families:
+
+<Tabs>
+<Tab title="Base Models">
+  - **Llama**: Meta's flagship models (Llama 3.1, 3.2, etc.)
+  - **Mistral**: Mistral 7B, Mixtral 8x7B, Codestral
+  - **Qwen**: Qwen 2.5, Qwen-Coder, Qwen-Math
+  - **Phi**: Microsoft Phi-3 series
+  - **Gemma**: Google's Gemma 2B, 7B models
+</Tab>
+
+<Tab title="Chat Models">
+  - **OpenChat**: OpenChat 3.5, 3.6
+  - **Zephyr**: Zephyr-7B-beta, Zephyr-7B-alpha
+  - **Starling**: Starling-LM series
+  - **Neural-Chat**: Intel's Neural Chat models
+  - **Solar**: Upstage Solar series
+</Tab>
+
+<Tab title="Code Models">
+  - **CodeLlama**: Meta's code-focused Llama variants
+  - **StarCoder**: BigCode's StarCoder series
+  - **CodeGeex**: THUDM's multilingual code models
+  - **MagiCoder**: OSS-Instruct code models
+  - **Phind**: Phind-CodeLlama series
+</Tab>
+
+<Tab title="Specialized">
+  - **WizardMath**: Mathematical reasoning models
+  - **MetaMath**: Advanced math problem solving
+  - **MathStral**: Mistral's math-focused model
+  - **TinyLlama**: Lightweight 1.1B parameter model
+  - **MiniCPM**: Efficient small-scale models
+</Tab>
+</Tabs>
+
+## Architecture Overview
+
+Artemis features a sophisticated multi-tier distributed architecture optimized for LLM training:
+
+<Frame>
+  <img src="/images/artemis-architecture.png" alt="Artemis RL Gym Architecture" />
+</Frame>
+
+### Core Principles
+
+<AccordionGroup>
+<Accordion title="Modularity">
+  Each component is independently scalable and replaceable, allowing you to customize the framework to your specific needs.
+</Accordion>
+
+<Accordion title="Fault Tolerance">
+  Automatic health checks and recovery mechanisms ensure your training continues even when individual components fail.
+</Accordion>
+
+<Accordion title="Zero-Cost Communication">
+  In-memory broker eliminates infrastructure costs while maintaining full distributed functionality.
+</Accordion>
+
+<Accordion title="Intelligent Optimization">
+  Auto-tuning for different model types and tasks ensures optimal performance without manual configuration.
+</Accordion>
+</AccordionGroup>
+
+## Quick Start
+
+Get started with Artemis RL Gym in minutes:
+
+<Steps>
+<Step title="Install Artemis">
+  ```bash
+  pip install artemis-rl-gym
+  ```
+</Step>
+
+<Step title="Basic Training">
+  ```python
+  from artemis import train_llm_grpo
+
+  # Universal LLM training - works with ANY open-source model
+  await train_llm_grpo(
+      model_name="microsoft/DialoGPT-medium",
+      env_type="conversation",
+      num_episodes=100,
+      distributed=True
+  )
+  ```
+</Step>
+
+<Step title="Monitor Progress">
+  Access the built-in monitoring dashboard at `http://localhost:8000`
+</Step>
+</Steps>
+
+<Tip>
+Want to dive deeper? Check out our [comprehensive quickstart guide](/artemis/quickstart) for detailed setup instructions and advanced configuration options.
+</Tip>
+
+## What's Next?
+
+<CardGroup cols={3}>
+<Card title="Quickstart" icon="play" href="/artemis/quickstart">
+  Get up and running in under 10 minutes
+</Card>
+
+<Card title="Core Components" icon="cube" href="/artemis/core/overview">
+  Learn about agents, environments, and algorithms
+</Card>
+
+<Card title="Examples" icon="code" href="/artemis/examples">
+  Explore practical usage examples and tutorials
+</Card>
+</CardGroup>
+
+## Community & Support
+
+<CardGroup cols={2}>
+<Card title="GitHub Repository" icon="github" href="https://github.com/noema-research/artemis-rl-gym">
+  Source code, issues, and contributions
+</Card>
+
+<Card title="Discord Community" icon="discord" href="https://discord.gg/artemis-rl">
+  Join our community for support and discussions
+</Card>
+</CardGroup>
+
+<Note>
+Artemis RL Gym is actively maintained by Noema Research. We welcome contributions from the community and are committed to supporting the open-source ecosystem.
+</Note>

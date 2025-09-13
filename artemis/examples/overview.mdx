@@ -1,0 +1,1036 @@
+---
+title: "Usage Examples"
+description: "Practical tutorials and examples for common Artemis RL Gym use cases"
+---
+
+This section provides hands-on examples and tutorials for common use cases with Artemis RL Gym. Each example includes complete, runnable code that you can adapt for your specific needs.
+
+## Getting Started Examples
+
+<CardGroup cols={2}>
+<Card title="Basic Training" icon="play" href="/artemis/examples/basic-training">
+  Simple GRPO training with a small model
+</Card>
+
+<Card title="Multi-Environment" icon="globe" href="/artemis/examples/multi-environment">
+  Training across multiple specialized environments
+</Card>
+
+<Card title="Custom Environment" icon="wrench" href="/artemis/examples/custom-environment">
+  Creating and using custom environments
+</Card>
+
+<Card title="Distributed Training" icon="network-wired" href="/artemis/examples/distributed-training">
+  Scaling training across multiple nodes
+</Card>
+</CardGroup>
+
+## Quick Start: Basic Training
+
+Let's start with a simple example that trains a conversational agent using GRPO:
+
+<Steps>
+<Step title="Setup and Installation">
+  First, ensure Artemis is installed:
+
+  ```bash
+  pip install artemis-rl-gym
+  ```
+
+  For this example, we'll also need:
+
+  ```bash
+  pip install torch transformers datasets
+  ```
+</Step>
+
+<Step title="Basic Training Script">
+  Create a simple training script:
+
+  ```python
+  import asyncio
+  from artemis import train_llm_grpo
+
+  async def basic_example():
+      """Simple conversation training example"""
+      
+      print("🚀 Starting Artemis RL training...")
+      
+      results = await train_llm_grpo(
+          model_name="microsoft/DialoGPT-medium",
+          env_type="conversation",
+          num_episodes=50,
+          distributed=False,  # Single node for simplicity
+          monitoring=True,    # Enable dashboard
+          output_dir="./artemis_basic_results"
+      )
+      
+      print("✅ Training completed!")
+      print(f"Final reward: {results['final_reward']:.3f}")
+      print(f"Episodes completed: {results['episodes_completed']}")
+      print(f"Training time: {results['training_time']:.1f}s")
+      
+      # Model is automatically saved to output_dir
+      print(f"Model saved to: {results['model_path']}")
+
+  if __name__ == "__main__":
+      asyncio.run(basic_example())
+  ```
+</Step>
+
+<Step title="Run the Training">
+  Execute the script:
+
+  ```bash
+  python basic_training.py
+  ```
+
+  Monitor progress at `http://localhost:8000`
+</Step>
+</Steps>
+
+## Advanced Examples
+
+### Math Reasoning with Custom Configuration
+
+Train a mathematical reasoning agent with custom GRPO settings:
+
+<CodeGroup>
+```python Math Training
+import asyncio
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.environments.math_env import MathematicalReasoningEnvironment
+from artemis.rl_algorithms.grpo import GRPO, GRPOConfig
+
+async def math_reasoning_example():
+    """Advanced math reasoning training with custom configuration"""
+    
+    # Configure math-optimized agent
+    agent_config = LLMAgentConfig(
+        model_name="WizardLM/WizardMath-7B-V1.1",
+        temperature=0.3,  # Lower temperature for precision
+        max_new_tokens=512,
+        use_lora=True,
+        lora_r=16,
+        use_grpo=True
+    )
+    
+    # Configure GRPO for math training
+    grpo_config = GRPOConfig(
+        num_reference_policies=3,
+        reference_weight=0.15,  # Slightly higher for math stability
+        learning_rate=1e-4,
+        batch_size=16,
+        kl_penalty_coefficient=0.01
+    )
+    
+    # Configure math environment
+    env_config = {
+        "categories": ["algebra", "geometry", "calculus"],
+        "difficulty_range": (4, 8),
+        "step_by_step_evaluation": True,
+        "provide_hints": True,
+        "reward_intermediate_steps": True
+    }
+    
+    # Initialize components
+    agent = LLMAgent(agent_config)
+    environment = MathematicalReasoningEnvironment(**env_config)
+    grpo = GRPO(grpo_config)
+    
+    print("🧮 Starting mathematical reasoning training...")
+    
+    # Training loop
+    for episode in range(200):
+        observation = environment.reset()
+        episode_reward = 0
+        step_count = 0
+        
+        if episode % 20 == 0:
+            print(f"\nEpisode {episode}")
+            print(f"Problem: {observation.problem_statement[:100]}...")
+        
+        while not environment.done and step_count < 10:
+            # Get action from agent
+            action = agent.get_action(observation)
+            
+            # Execute in environment
+            step_result = environment.step(action)
+            episode_reward += step_result.reward
+            
+            # Store experience for GRPO update
+            experience = {
+                'observation': observation,
+                'action': action,
+                'reward': step_result.reward,
+                'next_observation': step_result.observation,
+                'done': step_result.done
+            }
+            
+            grpo.store_experience(experience)
+            
+            if episode % 20 == 0 and step_count < 3:
+                print(f"Step {step_count + 1}: {action.text[:50]}...")
+                print(f"Reward: {step_result.reward:.3f}")
+            
+            observation = step_result.observation
+            step_count += 1
+        
+        if episode % 20 == 0:
+            print(f"Episode reward: {episode_reward:.3f}")
+            
+            if step_result.info.get('correct_answer', False):
+                print("✅ Correct answer!")
+            else:
+                print("❌ Incorrect answer")
+        
+        # Update policy every 16 episodes
+        if episode > 0 and episode % 16 == 0:
+            metrics = grpo.update()
+            
+            if episode % 80 == 0:  # Print metrics every 80 episodes
+                print(f"\nTraining metrics (Episode {episode}):")
+                print(f"Policy loss: {metrics['policy_loss']:.4f}")
+                print(f"Value loss: {metrics['value_loss']:.4f}")
+                print(f"KL divergence: {metrics['kl_divergence']:.4f}")
+    
+    # Save the trained model
+    agent.save_checkpoint("math_reasoning_agent.pt")
+    print("\n🎯 Training completed! Model saved to math_reasoning_agent.pt")
+
+if __name__ == "__main__":
+    asyncio.run(math_reasoning_example())
+```
+
+```python Evaluation Script
+import asyncio
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.environments.dataset_envs.gsm8k import GSM8KEnvironment
+
+async def evaluate_math_agent():
+    """Evaluate the trained math agent on GSM8K dataset"""
+    
+    # Load the trained agent
+    agent_config = LLMAgentConfig(
+        model_name="WizardLM/WizardMath-7B-V1.1",
+        temperature=0.1,  # Very low temperature for evaluation
+        max_new_tokens=512
+    )
+    
+    agent = LLMAgent(agent_config)
+    agent.load_checkpoint("math_reasoning_agent.pt")
+    
+    # Use GSM8K test environment
+    test_env = GSM8KEnvironment(
+        split="test",
+        max_steps=5,
+        shuffle_problems=False
+    )
+    
+    print("📊 Evaluating math agent on GSM8K test set...")
+    
+    total_problems = 0
+    correct_answers = 0
+    total_reward = 0
+    
+    for episode in range(100):  # Evaluate on 100 test problems
+        observation = test_env.reset()
+        episode_reward = 0
+        
+        while not test_env.done:
+            action = agent.get_action(observation)
+            step_result = test_env.step(action)
+            episode_reward += step_result.reward
+            observation = step_result.observation
+        
+        total_problems += 1
+        total_reward += episode_reward
+        
+        if step_result.info.get('correct_answer', False):
+            correct_answers += 1
+        
+        if episode % 25 == 0:
+            accuracy = correct_answers / max(1, total_problems) * 100
+            avg_reward = total_reward / max(1, total_problems)
+            print(f"Progress: {episode}/100 | Accuracy: {accuracy:.1f}% | Avg Reward: {avg_reward:.3f}")
+    
+    # Final results
+    final_accuracy = correct_answers / total_problems * 100
+    avg_reward = total_reward / total_problems
+    
+    print(f"\n📈 Final Evaluation Results:")
+    print(f"Problems solved: {total_problems}")
+    print(f"Correct answers: {correct_answers}")
+    print(f"Accuracy: {final_accuracy:.2f}%")
+    print(f"Average reward: {avg_reward:.3f}")
+
+if __name__ == "__main__":
+    asyncio.run(evaluate_math_agent())
+```
+</CodeGroup>
+
+### Code Generation Training
+
+Train a code generation agent using specialized environments:
+
+<CodeGroup>
+```python Code Training
+import asyncio
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.environments.code_env import CodeGenerationEnvironment, ProgrammingLanguage
+from artemis.rl_algorithms.grpo import GRPO, GRPOConfig
+
+async def code_generation_example():
+    """Train a code generation agent"""
+    
+    # Code-optimized agent configuration
+    agent_config = LLMAgentConfig(
+        model_name="deepseek-ai/deepseek-coder-6.7b-instruct",
+        temperature=0.1,  # Low temperature for precise code
+        max_new_tokens=1024,  # Longer sequences for code
+        use_lora=True,
+        lora_r=32,  # Higher rank for code complexity
+        use_grpo=True
+    )
+    
+    # Code environment configuration
+    code_env = CodeGenerationEnvironment(
+        languages=[ProgrammingLanguage.PYTHON],
+        difficulty_levels=["beginner", "intermediate"],
+        enable_execution=True,
+        security_sandbox=True,
+        timeout_seconds=30,
+        provide_feedback=True
+    )
+    
+    # GRPO configuration for code training
+    grpo_config = GRPOConfig(
+        learning_rate=5e-5,  # Lower learning rate for stability
+        batch_size=8,        # Smaller batch for longer sequences
+        num_reference_policies=2,
+        reference_weight=0.05  # Lower reference weight for creativity
+    )
+    
+    agent = LLMAgent(agent_config)
+    grpo = GRPO(grpo_config)
+    
+    print("💻 Starting code generation training...")
+    
+    successful_solutions = 0
+    total_episodes = 150
+    
+    for episode in range(total_episodes):
+        observation = code_env.reset()
+        
+        if episode % 30 == 0:
+            print(f"\n--- Episode {episode} ---")
+            print(f"Task: {observation.problem_description}")
+            print(f"Function signature: {observation.function_signature}")
+        
+        # Generate code solution
+        action = agent.get_action(observation)
+        step_result = code_env.step(action)
+        
+        # Store experience
+        experience = {
+            'observation': observation,
+            'action': action,
+            'reward': step_result.reward,
+            'done': step_result.done,
+            'info': step_result.info
+        }
+        
+        grpo.store_experience(experience)
+        
+        # Check if solution was successful
+        if step_result.info.get('all_tests_passed', False):
+            successful_solutions += 1
+            
+        if episode % 30 == 0:
+            print(f"Generated code:\n{action.code}")
+            print(f"Test results: {step_result.info.get('test_results', {})}")
+            print(f"Quality score: {step_result.reward:.3f}")
+            print(f"Tests passed: {'✅' if step_result.info.get('all_tests_passed') else '❌'}")
+            print(f"Success rate: {successful_solutions}/{episode+1} ({successful_solutions/(episode+1)*100:.1f}%)")
+        
+        # Update policy every 8 episodes
+        if episode > 0 and episode % 8 == 0:
+            metrics = grpo.update()
+            
+            if episode % 40 == 0:
+                print(f"\nTraining metrics:")
+                print(f"Policy loss: {metrics['policy_loss']:.4f}")
+                print(f"Success rate: {successful_solutions/episode*100:.1f}%")
+    
+    # Save trained model
+    agent.save_checkpoint("code_generation_agent.pt")
+    
+    final_success_rate = successful_solutions / total_episodes * 100
+    print(f"\n🎯 Training completed!")
+    print(f"Final success rate: {final_success_rate:.2f}%")
+    print(f"Model saved to: code_generation_agent.pt")
+
+if __name__ == "__main__":
+    asyncio.run(code_generation_example())
+```
+
+```python HumanEval Testing
+import asyncio
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.environments.dataset_envs.human_eval import HumanEvalEnvironment
+
+async def test_on_human_eval():
+    """Test the code agent on HumanEval benchmark"""
+    
+    # Load trained agent
+    agent_config = LLMAgentConfig(
+        model_name="deepseek-ai/deepseek-coder-6.7b-instruct",
+        temperature=0.0,  # Deterministic for evaluation
+        max_new_tokens=1024
+    )
+    
+    agent = LLMAgent(agent_config)
+    agent.load_checkpoint("code_generation_agent.pt")
+    
+    # HumanEval environment
+    human_eval = HumanEvalEnvironment(
+        subset="basic",
+        execution_timeout=10,
+        security_sandbox=True
+    )
+    
+    print("🧪 Testing on HumanEval dataset...")
+    
+    passed_tests = 0
+    total_tests = 50
+    
+    for test_id in range(total_tests):
+        observation = human_eval.reset()
+        
+        # Generate solution
+        action = agent.get_action(observation)
+        result = human_eval.step(action)
+        
+        if result.info.get('tests_passed', False):
+            passed_tests += 1
+            print(f"✅ Test {test_id + 1}: PASSED")
+        else:
+            print(f"❌ Test {test_id + 1}: FAILED")
+            
+        if test_id % 10 == 9:
+            current_rate = passed_tests / (test_id + 1) * 100
+            print(f"Progress: {test_id + 1}/{total_tests} | Pass rate: {current_rate:.1f}%")
+    
+    final_pass_rate = passed_tests / total_tests * 100
+    print(f"\n📊 HumanEval Results:")
+    print(f"Tests passed: {passed_tests}/{total_tests}")
+    print(f"Pass rate: {final_pass_rate:.2f}%")
+
+if __name__ == "__main__":
+    asyncio.run(test_on_human_eval())
+```
+</CodeGroup>
+
+### Multi-Agent Training
+
+Train multiple agents with different specializations:
+
+```python
+import asyncio
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.distributed.trainer_hub import DistributedTrainerHub
+
+async def multi_agent_training():
+    """Train multiple specialized agents"""
+    
+    # Define agent specializations
+    agent_configs = [
+        {
+            "name": "math_specialist",
+            "model": "WizardLM/WizardMath-7B-V1.1",
+            "environment": "math",
+            "temperature": 0.2,
+            "specialization": "mathematical_reasoning"
+        },
+        {
+            "name": "code_specialist", 
+            "model": "deepseek-ai/deepseek-coder-6.7b-instruct",
+            "environment": "code",
+            "temperature": 0.1,
+            "specialization": "code_generation"
+        },
+        {
+            "name": "conversation_specialist",
+            "model": "openchat/openchat-3.5-0106",
+            "environment": "conversation",
+            "temperature": 0.7,
+            "specialization": "dialogue_systems"
+        }
+    ]
+    
+    # Create specialized agents
+    agents = {}
+    for config in agent_configs:
+        agent_config = LLMAgentConfig(
+            model_name=config["model"],
+            temperature=config["temperature"],
+            use_lora=True,
+            use_grpo=True
+        )
+        
+        agents[config["name"]] = {
+            "agent": LLMAgent(agent_config),
+            "environment": config["environment"],
+            "specialization": config["specialization"]
+        }
+    
+    print("🤖 Starting multi-agent training...")
+    
+    # Distributed training hub configuration
+    hub_config = {
+        "training_method": "parallel",  # Train agents in parallel
+        "cross_training": True,         # Agents learn from each other
+        "knowledge_sharing": True,      # Share successful strategies
+        "evaluation_frequency": 50     # Evaluate every 50 episodes
+    }
+    
+    trainer_hub = DistributedTrainerHub(hub_config)
+    
+    # Register agents with the hub
+    for name, agent_info in agents.items():
+        trainer_hub.register_agent(
+            agent_id=name,
+            agent=agent_info["agent"],
+            environment_type=agent_info["environment"],
+            specialization=agent_info["specialization"]
+        )
+    
+    # Start distributed training
+    training_results = await trainer_hub.train_multi_agent(
+        episodes_per_agent=300,
+        parallel_episodes=3,
+        cross_evaluation=True
+    )
+    
+    print("\n📊 Multi-Agent Training Results:")
+    for agent_name, results in training_results.items():
+        print(f"\n{agent_name}:")
+        print(f"  Specialization reward: {results['specialization_reward']:.3f}")
+        print(f"  Cross-domain performance: {results['cross_domain_reward']:.3f}")
+        print(f"  Knowledge sharing benefit: {results['knowledge_gain']:.3f}")
+    
+    # Save all trained agents
+    for name, agent_info in agents.items():
+        checkpoint_path = f"{name}_trained.pt"
+        agent_info["agent"].save_checkpoint(checkpoint_path)
+        print(f"Saved {name} to {checkpoint_path}")
+    
+    print("\n🎯 Multi-agent training completed!")
+
+if __name__ == "__main__":
+    asyncio.run(multi_agent_training())
+```
+
+## Distributed Training Examples
+
+### Free Communication Setup
+
+Use Artemis's free in-memory communication for distributed training:
+
+```python
+import asyncio
+from artemis.distributed import DeploymentManager, DistributedTrainerHub
+from artemis.distributed.communication import CommunicationLayer
+from artemis.distributed.monitoring import MonitoringSystem
+
+async def free_distributed_training():
+    """Distributed training with FREE communication layer"""
+    
+    print("🆓 Setting up free distributed training...")
+    
+    # Configuration with FREE in-memory broker
+    config = {
+        "communication": {
+            "broker_type": "memory",  # FREE - no Redis/RabbitMQ needed!
+            "max_message_size": "50MB",
+            "compression": "lz4",
+            "encryption": False  # Disable for local development
+        },
+        "monitoring": {
+            "collector_type": "memory",  # FREE monitoring
+            "dashboard_port": 8000,
+            "metrics_retention": "1d"
+        },
+        "scaling": {
+            "inference": {
+                "min_instances": 2,
+                "max_instances": 6,
+                "auto_scaling_enabled": True
+            },
+            "environment": {
+                "min_instances": 4,
+                "max_instances": 12,
+                "auto_scaling_enabled": True
+            }
+        }
+    }
+    
+    # Start communication layer
+    communication = CommunicationLayer(config["communication"])
+    await communication.connect()
+    print("✅ Free communication layer started")
+    
+    # Start monitoring system
+    monitoring = MonitoringSystem(config["monitoring"])
+    await monitoring.start()
+    print(f"✅ Monitoring dashboard at http://localhost:{config['monitoring']['dashboard_port']}")
+    
+    # Start deployment manager
+    deployment = DeploymentManager(config)
+    await deployment.start()
+    print("✅ Deployment manager started")
+    
+    # Configure distributed training
+    training_config = {
+        "model_name": "microsoft/DialoGPT-medium",
+        "environments": ["conversation", "math"],
+        "episodes_per_environment": 200,
+        "distributed_workers": 4
+    }
+    
+    # Start distributed training
+    trainer_hub = DistributedTrainerHub(training_config)
+    await trainer_hub.start()
+    
+    print("🚀 Starting distributed training...")
+    print("Monitor progress at http://localhost:8000")
+    
+    # Run training
+    results = await trainer_hub.train_distributed(
+        total_episodes=1000,
+        checkpoint_interval=100
+    )
+    
+    print(f"\n📈 Distributed training results:")
+    print(f"Total episodes: {results['total_episodes']}")
+    print(f"Average reward: {results['average_reward']:.3f}")
+    print(f"Training time: {results['training_time']:.1f}s")
+    print(f"Peak workers: {results['peak_workers']}")
+    print(f"Cost savings: 100% (no Redis/RabbitMQ fees!)")
+    
+    # Cleanup
+    await trainer_hub.stop()
+    await deployment.stop()
+    await monitoring.stop()
+    await communication.disconnect()
+    
+    print("✅ Distributed training completed successfully!")
+
+if __name__ == "__main__":
+    asyncio.run(free_distributed_training())
+```
+
+## Custom Environment Examples
+
+### Business Strategy Environment
+
+Create a custom environment for business reasoning tasks:
+
+```python
+from artemis.core.env import BaseEnvironment, Observation, Action, StepResult
+from dataclasses import dataclass
+from typing import List, Dict, Any
+import random
+
+@dataclass
+class BusinessScenario:
+    company_type: str
+    market_condition: str
+    problem_description: str
+    stakeholders: List[str]
+    constraints: List[str]
+    success_criteria: Dict[str, float]
+
+class BusinessStrategyEnvironment(BaseEnvironment):
+    """Custom environment for business strategy training"""
+    
+    def __init__(self, config: Dict[str, Any]):
+        super().__init__(config)
+        self.company_types = ["startup", "enterprise", "nonprofit", "consulting"]
+        self.market_conditions = ["growth", "recession", "stable", "volatile", "emerging"]
+        self.current_scenario = None
+        self.step_count = 0
+        self.max_steps = config.get("max_steps", 5)
+        
+        # Business knowledge base
+        self.strategy_frameworks = [
+            "SWOT Analysis", "Porter's Five Forces", "Blue Ocean Strategy",
+            "Lean Canvas", "OKRs", "BCG Matrix", "McKinsey 7S"
+        ]
+        
+        self.success_metrics = [
+            "revenue_growth", "market_share", "customer_satisfaction",
+            "operational_efficiency", "risk_mitigation"
+        ]
+    
+    def reset(self) -> Observation:
+        """Generate new business scenario"""
+        self.current_scenario = self._generate_business_scenario()
+        self.step_count = 0
+        
+        prompt = self._create_scenario_prompt()
+        
+        return Observation(
+            text=prompt,
+            metadata={
+                "scenario_type": self.current_scenario.company_type,
+                "market_condition": self.current_scenario.market_condition,
+                "difficulty": self._calculate_scenario_difficulty(),
+                "step": self.step_count,
+                "max_steps": self.max_steps
+            }
+        )
+    
+    def step(self, action: Action) -> StepResult:
+        """Evaluate business strategy response"""
+        self.step_count += 1
+        
+        # Evaluate the business strategy response
+        evaluation = self._evaluate_business_strategy(action.text)
+        
+        # Check if scenario is complete
+        done = (self.step_count >= self.max_steps or 
+                evaluation["solution_complete"])
+        
+        # Generate follow-up prompt if not done
+        next_observation = None
+        if not done:
+            next_observation = self._generate_followup_observation(
+                action.text, evaluation
+            )
+        
+        return StepResult(
+            observation=next_observation,
+            reward=evaluation["total_score"],
+            done=done,
+            info={
+                "evaluation_breakdown": evaluation,
+                "strategy_quality": evaluation["strategy_score"],
+                "implementation_feasibility": evaluation["feasibility_score"],
+                "stakeholder_alignment": evaluation["stakeholder_score"],
+                "frameworks_used": evaluation["frameworks_identified"]
+            }
+        )
+    
+    def _generate_business_scenario(self) -> BusinessScenario:
+        """Generate a realistic business scenario"""
+        company_type = random.choice(self.company_types)
+        market_condition = random.choice(self.market_conditions)
+        
+        # Generate scenario based on company type and market
+        scenarios = {
+            ("startup", "growth"): {
+                "problem": "Rapidly scaling operations while maintaining quality and culture",
+                "stakeholders": ["founders", "employees", "investors", "customers"],
+                "constraints": ["limited_capital", "talent_acquisition", "market_competition"]
+            },
+            ("enterprise", "recession"): {
+                "problem": "Cost optimization while maintaining competitive advantage",
+                "stakeholders": ["shareholders", "employees", "customers", "suppliers"],
+                "constraints": ["regulatory_compliance", "legacy_systems", "union_agreements"]
+            },
+            # Add more scenario combinations...
+        }
+        
+        key = (company_type, market_condition)
+        scenario_template = scenarios.get(key, {
+            "problem": "Strategic planning for sustainable growth",
+            "stakeholders": ["management", "employees", "customers"],
+            "constraints": ["budget_limitations", "resource_constraints"]
+        })
+        
+        return BusinessScenario(
+            company_type=company_type,
+            market_condition=market_condition,
+            problem_description=scenario_template["problem"],
+            stakeholders=scenario_template["stakeholders"],
+            constraints=scenario_template["constraints"],
+            success_criteria=self._generate_success_criteria()
+        )
+    
+    def _evaluate_business_strategy(self, response: str) -> Dict[str, Any]:
+        """Evaluate the quality of a business strategy response"""
+        response_lower = response.lower()
+        
+        # Check for strategic frameworks
+        frameworks_used = [
+            framework for framework in self.strategy_frameworks
+            if framework.lower() in response_lower
+        ]
+        
+        # Evaluate different aspects
+        strategy_score = self._score_strategic_thinking(response_lower)
+        feasibility_score = self._score_implementation_feasibility(response_lower)
+        stakeholder_score = self._score_stakeholder_consideration(response_lower)
+        innovation_score = self._score_innovation(response_lower)
+        
+        # Calculate total score
+        total_score = (
+            strategy_score * 0.3 +
+            feasibility_score * 0.25 +
+            stakeholder_score * 0.25 +
+            innovation_score * 0.2
+        )
+        
+        return {
+            "total_score": total_score,
+            "strategy_score": strategy_score,
+            "feasibility_score": feasibility_score,
+            "stakeholder_score": stakeholder_score,
+            "innovation_score": innovation_score,
+            "frameworks_identified": frameworks_used,
+            "solution_complete": total_score > 0.8
+        }
+    
+    def _score_strategic_thinking(self, response: str) -> float:
+        """Score strategic thinking quality"""
+        strategic_keywords = [
+            "analysis", "assessment", "opportunity", "threat", "competitive",
+            "market", "value proposition", "differentiation", "positioning"
+        ]
+        
+        score = sum(1 for keyword in strategic_keywords if keyword in response)
+        return min(score / len(strategic_keywords), 1.0)
+    
+    def _score_implementation_feasibility(self, response: str) -> float:
+        """Score implementation feasibility"""
+        implementation_keywords = [
+            "timeline", "budget", "resources", "milestones", "metrics",
+            "steps", "phases", "execution", "plan", "deliverables"
+        ]
+        
+        score = sum(1 for keyword in implementation_keywords if keyword in response)
+        return min(score / len(implementation_keywords), 1.0)
+    
+    def _score_stakeholder_consideration(self, response: str) -> float:
+        """Score stakeholder consideration"""
+        current_stakeholders = [s.lower() for s in self.current_scenario.stakeholders]
+        mentioned_stakeholders = sum(
+            1 for stakeholder in current_stakeholders 
+            if stakeholder in response
+        )
+        
+        if len(current_stakeholders) == 0:
+            return 1.0
+            
+        return mentioned_stakeholders / len(current_stakeholders)
+    
+    def _score_innovation(self, response: str) -> float:
+        """Score innovative thinking"""
+        innovation_keywords = [
+            "innovation", "creative", "novel", "disruptive", "breakthrough",
+            "pioneering", "cutting-edge", "revolutionary", "game-changing"
+        ]
+        
+        score = sum(1 for keyword in innovation_keywords if keyword in response)
+        return min(score / 3, 1.0)  # Cap at 3 keywords for full score
+
+# Usage example
+async def business_strategy_training():
+    """Train an agent on business strategy scenarios"""
+    from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+    
+    # Business-focused agent configuration
+    agent_config = LLMAgentConfig(
+        model_name="meta-llama/Llama-3.1-8B-Instruct",
+        temperature=0.6,  # Balanced creativity and consistency
+        max_new_tokens=512,
+        use_lora=True
+    )
+    
+    # Business environment configuration
+    env_config = {
+        "max_steps": 3,
+        "difficulty_progression": True,
+        "domain_focus": "technology"
+    }
+    
+    agent = LLMAgent(agent_config)
+    business_env = BusinessStrategyEnvironment(env_config)
+    
+    print("💼 Starting business strategy training...")
+    
+    for episode in range(100):
+        observation = business_env.reset()
+        episode_reward = 0
+        
+        if episode % 20 == 0:
+            print(f"\n--- Episode {episode} ---")
+            print(f"Company: {observation.metadata['scenario_type']}")
+            print(f"Market: {observation.metadata['market_condition']}")
+            print(f"Challenge: {observation.text[:200]}...")
+        
+        while not business_env.done:
+            action = agent.get_action(observation)
+            step_result = business_env.step(action)
+            
+            episode_reward += step_result.reward
+            
+            if episode % 20 == 0:
+                print(f"Strategy quality: {step_result.info['strategy_quality']:.3f}")
+                print(f"Feasibility: {step_result.info['implementation_feasibility']:.3f}")
+            
+            observation = step_result.observation
+        
+        if episode % 20 == 0:
+            print(f"Episode reward: {episode_reward:.3f}")
+    
+    agent.save_checkpoint("business_strategy_agent.pt")
+    print("💼 Business strategy training completed!")
+
+if __name__ == "__main__":
+    asyncio.run(business_strategy_training())
+```
+
+## Performance Comparison Examples
+
+Compare different algorithms and configurations:
+
+```python
+import asyncio
+import time
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.rl_algorithms.grpo import GRPO, GRPOConfig
+from artemis.rl_algorithms.ppo import PPO, PPOConfig
+from artemis.environments.math_env import MathematicalReasoningEnvironment
+
+async def algorithm_comparison():
+    """Compare GRPO vs PPO performance"""
+    
+    # Test configurations
+    configurations = [
+        {
+            "name": "GRPO",
+            "algorithm": "grpo",
+            "config": GRPOConfig(
+                num_reference_policies=3,
+                reference_weight=0.1,
+                learning_rate=1e-4
+            )
+        },
+        {
+            "name": "PPO",
+            "algorithm": "ppo", 
+            "config": PPOConfig(
+                learning_rate=1e-4,
+                clip_epsilon=0.2
+            )
+        }
+    ]
+    
+    # Common agent configuration
+    base_agent_config = LLMAgentConfig(
+        model_name="microsoft/DialoGPT-medium",
+        temperature=0.5,
+        use_lora=True
+    )
+    
+    # Test environment
+    test_env = MathematicalReasoningEnvironment(
+        categories=["algebra"],
+        difficulty_range=(3, 6)
+    )
+    
+    results = {}
+    
+    print("🏁 Starting algorithm comparison...")
+    
+    for config in configurations:
+        print(f"\n🧪 Testing {config['name']}...")
+        
+        # Create agent and algorithm
+        agent = LLMAgent(base_agent_config)
+        
+        if config["algorithm"] == "grpo":
+            algorithm = GRPO(config["config"])
+        else:
+            algorithm = PPO(config["config"])
+        
+        start_time = time.time()
+        total_reward = 0
+        episodes = 50
+        
+        for episode in range(episodes):
+            observation = test_env.reset()
+            episode_reward = 0
+            
+            while not test_env.done:
+                action = agent.get_action(observation)
+                step_result = test_env.step(action)
+                
+                experience = {
+                    'observation': observation,
+                    'action': action,
+                    'reward': step_result.reward,
+                    'done': step_result.done
+                }
+                
+                algorithm.store_experience(experience)
+                episode_reward += step_result.reward
+                observation = step_result.observation
+            
+            total_reward += episode_reward
+            
+            # Update every 10 episodes
+            if episode % 10 == 9:
+                algorithm.update()
+        
+        training_time = time.time() - start_time
+        avg_reward = total_reward / episodes
+        
+        results[config["name"]] = {
+            "average_reward": avg_reward,
+            "training_time": training_time,
+            "episodes": episodes
+        }
+        
+        print(f"✅ {config['name']} completed:")
+        print(f"   Average reward: {avg_reward:.3f}")
+        print(f"   Training time: {training_time:.1f}s")
+    
+    # Print comparison
+    print(f"\n📊 Algorithm Comparison Results:")
+    print(f"{'Algorithm':<10} {'Avg Reward':<12} {'Time (s)':<10} {'Reward/Time':<12}")
+    print("-" * 50)
+    
+    for name, result in results.items():
+        efficiency = result["average_reward"] / result["training_time"]
+        print(f"{name:<10} {result['average_reward']:<12.3f} {result['training_time']:<10.1f} {efficiency:<12.4f}")
+
+if __name__ == "__main__":
+    asyncio.run(algorithm_comparison())
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="API Reference" icon="code" href="/artemis/api-reference/introduction">
+  Detailed API documentation for all components
+</Card>
+
+<Card title="Advanced Tutorials" icon="graduation-cap" href="/artemis/tutorials">
+  In-depth tutorials for complex scenarios
+</Card>
+
+<Card title="Best Practices" icon="star" href="/artemis/best-practices">
+  Production deployment and optimization guides
+</Card>
+
+<Card title="Community Examples" icon="users" href="https://github.com/noema-research/artemis-examples">
+  Community-contributed examples and use cases
+</Card>
+</CardGroup>
+
+<Note>
+All examples are available in the [Artemis Examples Repository](https://github.com/noema-research/artemis-examples) with additional datasets, configurations, and extended tutorials.
+</Note>

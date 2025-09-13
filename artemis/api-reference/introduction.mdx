@@ -1,0 +1,601 @@
+---
+title: "API Reference"
+description: "Complete API documentation for all Artemis RL Gym classes and methods"
+---
+
+This comprehensive API reference covers all public classes, methods, and configuration options in Artemis RL Gym. The API is organized by functional areas for easy navigation.
+
+## Core Components
+
+<CardGroup cols={3}>
+<Card title="Agents" icon="robot" href="/artemis/api-reference/agents">
+  BaseAgent, LLMAgent, and custom agent interfaces
+</Card>
+
+<Card title="Environments" icon="globe" href="/artemis/api-reference/environments">
+  BaseEnvironment and specialized environment classes
+</Card>
+
+<Card title="Algorithms" icon="calculator" href="/artemis/api-reference/algorithms">
+  GRPO, DPO, PPO algorithm implementations
+</Card>
+</CardGroup>
+
+## Quick Reference
+
+### High-Level Training Functions
+
+<AccordionGroup>
+<Accordion title="train_llm_grpo()">
+  **Purpose**: Universal LLM training with Group Relative Policy Optimization
+
+  <ParamField path="model_name" type="string" required>
+  Name of the Hugging Face model to train (e.g., "meta-llama/Llama-3.1-8B-Instruct")
+  </ParamField>
+
+  <ParamField path="env_type" type="string" required>
+  Environment type: "conversation", "math", "code", "reasoning", "gsm8k", "mmlu", or "human_eval"
+  </ParamField>
+
+  <ParamField path="num_episodes" type="integer" default="1000">
+  Number of training episodes to run
+  </ParamField>
+
+  <ParamField path="distributed" type="boolean" default="False">
+  Enable distributed training across multiple nodes
+  </ParamField>
+
+  <ParamField path="algorithm_config" type="GRPOConfig" default="None">
+  Custom GRPO algorithm configuration
+  </ParamField>
+
+  <ParamField path="output_dir" type="string" default="./artemis_results">
+  Directory to save training results and checkpoints
+  </ParamField>
+
+  <ParamField path="monitoring" type="boolean" default="True">
+  Enable real-time training monitoring dashboard
+  </ParamField>
+
+  **Returns**: Dictionary containing training metrics and results
+
+  ```python
+  from artemis import train_llm_grpo
+
+  results = await train_llm_grpo(
+      model_name="microsoft/DialoGPT-medium",
+      env_type="conversation",
+      num_episodes=100,
+      distributed=True
+  )
+  ```
+</Accordion>
+
+<Accordion title="train_llm_dpo()">
+  **Purpose**: Train LLM using Direct Preference Optimization
+
+  <ParamField path="model_name" type="string" required>
+  Name of the Hugging Face model to train
+  </ParamField>
+
+  <ParamField path="preference_data" type="string | Dataset" required>
+  Path to preference dataset or loaded Dataset object
+  </ParamField>
+
+  <ParamField path="beta" type="float" default="0.1">
+  KL regularization strength parameter
+  </ParamField>
+
+  <ParamField path="num_epochs" type="integer" default="10">
+  Number of training epochs
+  </ParamField>
+
+  <ParamField path="batch_size" type="integer" default="16">
+  Training batch size
+  </ParamField>
+
+  <ParamField path="learning_rate" type="float" default="5e-5">
+  Learning rate for optimization
+  </ParamField>
+
+  **Returns**: Trained model and training metrics
+
+  ```python
+  from artemis import train_llm_dpo
+
+  model, metrics = await train_llm_dpo(
+      model_name="meta-llama/Llama-3.1-8B-Instruct",
+      preference_data="human_preferences.json",
+      beta=0.1,
+      num_epochs=5
+  )
+  ```
+</Accordion>
+
+<Accordion title="create_grpo_trainer()">
+  **Purpose**: Create a GRPO trainer instance for custom training loops
+
+  <ParamField path="model_name" type="string" required>
+  Name of the model to use for training
+  </ParamField>
+
+  <ParamField path="environment" type="string | BaseEnvironment" required>
+  Environment name or instance
+  </ParamField>
+
+  <ParamField path="reward_model" type="string" default="auto">
+  Reward model to use ("auto" for automatic selection)
+  </ParamField>
+
+  <ParamField path="config" type="GRPOConfig" default="None">
+  Custom GRPO configuration
+  </ParamField>
+
+  **Returns**: Configured GRPO trainer instance
+
+  ```python
+  from artemis import create_grpo_trainer
+
+  trainer = create_grpo_trainer(
+      model_name="WizardLM/WizardMath-7B-V1.1",
+      environment="math",
+      reward_model="auto"
+  )
+
+  results = await trainer.train(episodes=500)
+  ```
+</Accordion>
+</AccordionGroup>
+
+## Configuration Classes
+
+### AgentConfig
+
+Base configuration for all agents:
+
+<ParamField path="agent_type" type="AgentType" required>
+AgentType.LLM, AgentType.CUSTOM, or AgentType.HYBRID
+</ParamField>
+
+<ParamField path="model_name" type="string" required>
+Hugging Face model identifier
+</ParamField>
+
+<ParamField path="max_tokens" type="integer" default="512">
+Maximum tokens to generate
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.7">
+Sampling temperature (0.0 to 2.0)
+</ParamField>
+
+<ParamField path="top_p" type="float" default="0.9">
+Nucleus sampling parameter
+</ParamField>
+
+<ParamField path="device" type="string" default="cuda">
+Device to run model on ("cuda", "cpu", "auto")
+</ParamField>
+
+<ParamField path="batch_size" type="integer" default="1">
+Batch size for inference
+</ParamField>
+
+<ParamField path="use_distributed" type="boolean" default="False">
+Enable distributed inference
+</ParamField>
+
+```python
+from artemis.core.agent import AgentConfig, AgentType
+
+config = AgentConfig(
+    agent_type=AgentType.LLM,
+    model_name="microsoft/DialoGPT-medium",
+    temperature=0.7,
+    device="cuda",
+    batch_size=4
+)
+```
+
+### LLMAgentConfig
+
+Extended configuration for LLM agents:
+
+<ParamField path="model_type" type="string" default="auto">
+Model type for optimization ("auto", "llama", "mistral", "gpt", etc.)
+</ParamField>
+
+<ParamField path="use_lora" type="boolean" default="True">
+Enable Low-Rank Adaptation for memory efficiency
+</ParamField>
+
+<ParamField path="lora_r" type="integer" default="16">
+LoRA rank parameter
+</ParamField>
+
+<ParamField path="lora_alpha" type="integer" default="32">
+LoRA alpha scaling parameter
+</ParamField>
+
+<ParamField path="lora_dropout" type="float" default="0.1">
+LoRA dropout rate
+</ParamField>
+
+<ParamField path="max_new_tokens" type="integer" default="512">
+Maximum new tokens to generate
+</ParamField>
+
+<ParamField path="use_grpo" type="boolean" default="True">
+Enable Group Relative Policy Optimization
+</ParamField>
+
+<ParamField path="grpo_beta" type="float" default="0.1">
+GRPO beta parameter
+</ParamField>
+
+<ParamField path="use_gradient_checkpointing" type="boolean" default="False">
+Enable gradient checkpointing to save memory
+</ParamField>
+
+<ParamField path="use_fp16" type="boolean" default="False">
+Use half precision for training
+</ParamField>
+
+```python
+from artemis.agents.llm_agent import LLMAgentConfig
+
+config = LLMAgentConfig(
+    model_name="meta-llama/Llama-3.1-8B-Instruct",
+    use_lora=True,
+    lora_r=16,
+    max_new_tokens=256,
+    use_grpo=True,
+    use_fp16=True
+)
+```
+
+### EnvironmentConfig
+
+Base configuration for environments:
+
+<ParamField path="env_type" type="string" required>
+Environment type identifier
+</ParamField>
+
+<ParamField path="max_steps" type="integer" default="10">
+Maximum steps per episode
+</ParamField>
+
+<ParamField path="reward_shaping" type="boolean" default="True">
+Enable reward shaping for better learning
+</ParamField>
+
+<ParamField path="timeout" type="float" default="300.0">
+Episode timeout in seconds
+</ParamField>
+
+<ParamField path="seed" type="integer" default="None">
+Random seed for reproducibility
+</ParamField>
+
+```python
+from artemis.core.env import EnvironmentConfig
+
+config = EnvironmentConfig(
+    env_type="conversation",
+    max_steps=15,
+    reward_shaping=True,
+    timeout=600.0
+)
+```
+
+## Algorithm Configurations
+
+### GRPOConfig
+
+<ParamField path="num_reference_policies" type="integer" default="3">
+Number of reference policies to maintain
+</ParamField>
+
+<ParamField path="reference_weight" type="float" default="0.1">
+Weight of reference policy influence (0.0 to 1.0)
+</ParamField>
+
+<ParamField path="kl_penalty_coefficient" type="float" default="0.02">
+KL divergence penalty strength
+</ParamField>
+
+<ParamField path="relative_clip_epsilon" type="float" default="0.3">
+Relative clipping parameter for GRPO
+</ParamField>
+
+<ParamField path="group_normalization" type="boolean" default="True">
+Enable group normalization of advantages
+</ParamField>
+
+<ParamField path="adaptive_reference_weight" type="boolean" default="True">
+Automatically adapt reference weight during training
+</ParamField>
+
+<ParamField path="learning_rate" type="float" default="1e-4">
+Learning rate for policy optimization
+</ParamField>
+
+<ParamField path="clip_epsilon" type="float" default="0.2">
+Standard PPO clipping parameter
+</ParamField>
+
+<ParamField path="value_coefficient" type="float" default="0.5">
+Value function loss coefficient
+</ParamField>
+
+<ParamField path="entropy_coefficient" type="float" default="0.01">
+Entropy bonus coefficient
+</ParamField>
+
+<ParamField path="max_grad_norm" type="float" default="1.0">
+Maximum gradient norm for clipping
+</ParamField>
+
+<ParamField path="batch_size" type="integer" default="64">
+Training batch size
+</ParamField>
+
+<ParamField path="epochs_per_update" type="integer" default="4">
+Number of epochs per policy update
+</ParamField>
+
+```python
+from artemis.rl_algorithms.grpo import GRPOConfig
+
+config = GRPOConfig(
+    num_reference_policies=3,
+    reference_weight=0.1,
+    learning_rate=1e-4,
+    batch_size=32,
+    epochs_per_update=4
+)
+```
+
+### DPOConfig
+
+<ParamField path="beta" type="float" default="0.1">
+KL regularization strength parameter
+</ParamField>
+
+<ParamField path="reference_free" type="boolean" default="False">
+Use reference-free DPO variant
+</ParamField>
+
+<ParamField path="label_smoothing" type="float" default="0.0">
+Label smoothing for preference labels
+</ParamField>
+
+<ParamField path="loss_type" type="string" default="sigmoid">
+Loss function type ("sigmoid", "hinge", "ipo")
+</ParamField>
+
+<ParamField path="preference_data_ratio" type="float" default="1.0">
+Ratio of preference to standard training data
+</ParamField>
+
+<ParamField path="learning_rate" type="float" default="5e-5">
+Learning rate for DPO optimization
+</ParamField>
+
+<ParamField path="batch_size" type="integer" default="32">
+Training batch size
+</ParamField>
+
+<ParamField path="max_grad_norm" type="float" default="1.0">
+Maximum gradient norm for clipping
+</ParamField>
+
+<ParamField path="warmup_steps" type="integer" default="100">
+Number of learning rate warmup steps
+</ParamField>
+
+```python
+from artemis.rl_algorithms.dpo import DPOConfig
+
+config = DPOConfig(
+    beta=0.1,
+    loss_type="sigmoid",
+    learning_rate=5e-5,
+    batch_size=16,
+    warmup_steps=100
+)
+```
+
+## Distributed System Configuration
+
+### DeploymentConfig
+
+<ParamField path="communication" type="Dict" required>
+Communication layer configuration
+</ParamField>
+
+<ParamField path="monitoring" type="Dict" required>
+Monitoring system configuration
+</ParamField>
+
+<ParamField path="scaling" type="Dict" required>
+Auto-scaling configuration for components
+</ParamField>
+
+<ParamField path="fault_tolerance" type="Dict" default="{}">
+Fault tolerance and recovery settings
+</ParamField>
+
+<ParamField path="security" type="Dict" default="{}">
+Security and authentication settings
+</ParamField>
+
+```python
+config = {
+    "communication": {
+        "broker_type": "memory",  # or "redis", "rabbitmq"
+        "connection_pool_size": 10,
+        "message_compression": "gzip"
+    },
+    "monitoring": {
+        "collector_type": "memory",  # or "prometheus"
+        "metrics_retention": "7d",
+        "dashboard_port": 8000
+    },
+    "scaling": {
+        "inference": {
+            "min_instances": 2,
+            "max_instances": 8,
+            "target_cpu": 70
+        },
+        "environment": {
+            "min_instances": 4, 
+            "max_instances": 16,
+            "target_request_rate": 100
+        }
+    }
+}
+```
+
+## Data Types
+
+### Observation
+
+<ParamField path="text" type="string" default="None">
+Text content of the observation
+</ParamField>
+
+<ParamField path="embedding" type="torch.Tensor" default="None">
+Vector embedding representation
+</ParamField>
+
+<ParamField path="metadata" type="Dict" default="{}">
+Additional metadata about the observation
+</ParamField>
+
+<ParamField path="multimodal_data" type="Dict" default="None">
+Multi-modal data (text, images, audio)
+</ParamField>
+
+### Action
+
+<ParamField path="text" type="string" default="None">
+Text action/response
+</ParamField>
+
+<ParamField path="tokens" type="List[int]" default="None">
+Token IDs for the action
+</ParamField>
+
+<ParamField path="logits" type="torch.Tensor" default="None">
+Action logits from the model
+</ParamField>
+
+<ParamField path="metadata" type="Dict" default="{}">
+Additional action metadata
+</ParamField>
+
+### StepResult
+
+<ParamField path="observation" type="Observation" default="None">
+Next observation after taking the action
+</ParamField>
+
+<ParamField path="reward" type="float" required>
+Reward received for the action
+</ParamField>
+
+<ParamField path="done" type="boolean" required>
+Whether the episode is complete
+</ParamField>
+
+<ParamField path="info" type="Dict" default="{}">
+Additional information about the step
+</ParamField>
+
+## Error Handling
+
+### Common Exceptions
+
+<AccordionGroup>
+<Accordion title="ModelLoadError">
+  **Raised when**: Model fails to load from Hugging Face or local path
+  
+  **Common causes**:
+  - Invalid model name
+  - Insufficient permissions
+  - Network connectivity issues
+  - Insufficient memory
+  
+  **Example**:
+  ```python
+  try:
+      agent = LLMAgent(config)
+  except ModelLoadError as e:
+      print(f"Failed to load model: {e}")
+      # Handle fallback or retry logic
+  ```
+</Accordion>
+
+<Accordion title="EnvironmentError">
+  **Raised when**: Environment initialization or operation fails
+  
+  **Common causes**:
+  - Invalid environment configuration
+  - Missing dataset files
+  - Resource constraints
+  
+  **Example**:
+  ```python
+  try:
+      env = MathematicalReasoningEnvironment(config)
+  except EnvironmentError as e:
+      print(f"Environment error: {e}")
+      # Use fallback environment or adjust config
+  ```
+</Accordion>
+
+<Accordion title="DistributedTrainingError">
+  **Raised when**: Distributed training components fail
+  
+  **Common causes**:
+  - Network connectivity issues
+  - Resource allocation failures
+  - Configuration mismatches
+  
+  **Example**:
+  ```python
+  try:
+      deployment = DeploymentManager(config)
+      await deployment.start()
+  except DistributedTrainingError as e:
+      print(f"Distributed training error: {e}")
+      # Fall back to single-node training
+  ```
+</Accordion>
+</AccordionGroup>
+
+## Version Compatibility
+
+<Warning>
+API versions are backward compatible within major versions. Breaking changes are only introduced in major version updates (e.g., 1.x → 2.x).
+</Warning>
+
+| Artemis Version | Python Version | PyTorch Version | Transformers Version |
+|----------------|----------------|-----------------|---------------------|
+| 1.0.x          | ≥3.8           | ≥1.12.0         | ≥4.21.0            |
+| 1.1.x          | ≥3.8           | ≥1.13.0         | ≥4.25.0            |
+| 1.2.x          | ≥3.9           | ≥2.0.0          | ≥4.30.0            |
+
+## Next Steps
+
+<CardGroup cols={2}>
+<Card title="Examples" icon="code" href="/artemis/examples">
+  See the API in action with practical examples
+</Card>
+
+<Card title="Cookbook" icon="book" href="/artemis/cookbook">
+  Common patterns and best practices
+</Card>
+</CardGroup>
