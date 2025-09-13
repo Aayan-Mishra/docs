@@ -37,6 +37,13 @@
         ]
       },
       {
+        "group": "Performance & Optimization",
+        "pages": [
+          "artemis/performance/gpu-utilities",
+          "artemis/performance/monitoring"
+        ]
+      },
+      {
         "group": "Distributed System",
         "pages": [
           "artemis/distributed/overview"
@@ -46,6 +53,7 @@
         "group": "Tutorials",
         "pages": [
           "artemis/tutorials/index",
+          "artemis/tutorials/prism-tutorial",
           "artemis/tutorials/qwen3-4b-dpo",
           "artemis/tutorials/ppo-tutorial",
           "artemis/tutorials/grpo-tutorial",
