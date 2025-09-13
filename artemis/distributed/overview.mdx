@@ -367,17 +367,17 @@ spec:
   |--------------|---------------|--------------|-----------|
   | Inference Engine | 30s | 99.9% | 0% |
   | Environment Worker | 15s | 100% | 0% |
-  | Communication | 45s | 99.5% | <0.1% |
+  | Communication | 45s | 99.5% | &lt;0.1% |
   | Trainer Hub | 60s | 99.8% | 0% |
 </Tab>
 
 <Tab title="Network Partitions">
   | Partition Duration | Recovery Method | Training Continuity |
   |-------------------|-----------------|-------------------|
-  | <1 minute | Automatic retry | 100% |
+  | &lt;1 minute | Automatic retry | 100% |
   | 1-5 minutes | Circuit breaker | 85% |
   | 5-15 minutes | Manual intervention | 60% |
-  | >15 minutes | Full restart | 0% |
+  | &gt;15 minutes | Full restart | 0% |
 </Tab>
 </Tabs>
 

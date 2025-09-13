@@ -1,114 +1,56 @@
 {
   "$schema": "https://mintlify.com/docs.json",
+  "name": "Artemis RL Gym Documentation",
   "theme": "mint",
-  "name": "Noema Research Documentation",
-  "colors": {
-    "primary": "#6366F1",
-    "light": "#8B5CF6",
-    "dark": "#4F46E5"
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
   },
   "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#16A34A",
+    "light": "#07C983",
+    "dark": "#15803D"
+  },
   "navigation": {
-    "tabs": [
+    "groups": [
       {
-        "tab": "Guides",
-        "groups": [
-          {
-            "group": "Getting started",
-            "pages": [
-              "index",
-              "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "AI tools",
-            "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
-            ]
-          }
+        "group": "Getting Started",
+        "pages": [
+          "artemis/introduction",
+          "artemis/quickstart"
         ]
       },
       {
-        "tab": "Artemis RL Gym",
-        "groups": [
-          {
-            "group": "Getting Started",
-            "pages": [
-              "artemis/introduction",
-              "artemis/quickstart"
-            ]
-          },
-          {
-            "group": "Core Components",
-            "pages": [
-              "artemis/core/overview",
-              "artemis/core/agents",
-              "artemis/core/environments"
-            ]
-          },
-          {
-            "group": "RL Algorithms",
-            "pages": [
-              "artemis/algorithms/overview"
-            ]
-          },
-          {
-            "group": "Distributed System",
-            "pages": [
-              "artemis/distributed/overview"
-            ]
-          },
-          {
-            "group": "Examples & Tutorials",
-            "pages": [
-              "artemis/examples/overview"
-            ]
-          }
+        "group": "Core Components",
+        "pages": [
+          "artemis/core/overview",
+          "artemis/core/agents",
+          "artemis/core/environments"
         ]
       },
       {
-        "tab": "API reference",
-        "groups": [
-          {
-            "group": "API documentation",
-            "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Artemis API",
-            "pages": [
-              "artemis/api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
-            ]
-          }
+        "group": "RL Algorithms",
+        "pages": [
+          "artemis/algorithms/overview"
+        ]
+      },
+      {
+        "group": "Distributed System",
+        "pages": [
+          "artemis/distributed/overview"
+        ]
+      },
+      {
+        "group": "Examples & Tutorials",
+        "pages": [
+          "artemis/examples/overview"
+        ]
+      },
+      {
+        "group": "API Reference",
+        "pages": [
+          "artemis/api-reference/introduction"
         ]
       }
     ],
@@ -120,46 +62,17 @@
           "icon": "github"
         },
         {
-          "anchor": "Discord Community",
+          "anchor": "Discord",
           "href": "https://discord.gg/artemis-rl",
           "icon": "discord"
         },
         {
-          "anchor": "Research Papers",
+          "anchor": "Research",
           "href": "https://noema-research.com/papers",
           "icon": "file-text"
         }
       ]
     }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Contact",
-        "href": "mailto:contact@noema-research.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Get Started",
-      "href": "https://docs.noema-research.com/artemis/quickstart"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
   },
   "footer": {
     "socials": {
