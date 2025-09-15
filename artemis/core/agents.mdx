@@ -1,502 +1,1000 @@
-------
+---------
 
-title: "Agents"title: "Agents"
+title: "Agents"
+
+description: "Modern Agent API for Artemis RL with built-in RL Teacher capabilities"title: "Agents"title: "Agents"
+
+---
 
 description: "Modern Agent API for Artemis RL with built-in RL Teacher capabilities"description: "Modern Agent API for Artemis RL with built-in RL Teacher capabilities"
 
+The Artemis Agent API provides a unified interface for working with AI agents across different providers (OpenAI, Anthropic, Local models). This API supports multiple providers (OpenAI, Anthropic, Local models) and includes structured feedback systems for reinforcement learning training.
+
 ------
 
-
-
-The Artemis Agent API provides a unified interface for working with AI agents across different providers (OpenAI, Anthropic, Local models). This API supports multiple providers (OpenAI, Anthropic, Local models) and includes structured feedback systems for reinforcement learning training.The Artemis Agent API provides a unified interface for working with AI agents across different providers (OpenAI, Anthropic, Local models). This API supports multiple providers (OpenAI, Anthropic, Local models) and includes structured feedback systems for reinforcement learning training.
+## Quick Start
 
 
 
-## Quick Start## Quick Start
+```python
+
+from artemis.agent import agentThe Artemis Agent API provides a unified interface for working with AI agents across different providers (OpenAI, Anthropic, Local models). This API supports multiple providers (OpenAI, Anthropic, Local models) and includes structured feedback systems for reinforcement learning training.The Artemis Agent API provides a unified interface for working with AI agents across different providers (OpenAI, Anthropic, Local models). This API supports multiple providers (OpenAI, Anthropic, Local models) and includes structured feedback systems for reinforcement learning training.
 
 
+
+# Create a basic agent
+
+my_agent = agent().config(
+
+    level="balanced",## Quick Start## Quick Start
+
+    provider="anthropic",
+
+    model_id="claude-3-sonnet-20240229"
+
+)
 
 ```python```python
 
-from artemis.agent import agentfrom artemis.agent import agent
+await my_agent.initialize()
+
+response = await my_agent.act("Hello, world!")from artemis.agent import agentfrom artemis.agent import agent
+
+```
 
 
+
+## Factory Pattern
 
 # Create a basic agent# Create a basic agent
 
+### `agent()`
+
 my_agent = agent().config(my_agent = agent().config(
+
+The main factory function for creating agent instances.
 
     level="balanced",    level="balanced",
 
-    provider="anthropic",    provider="anthropic",
+```python
 
-    model_id="claude-3-sonnet-20240229"    model_id="claude-3-sonnet-20240229"
-
-))
+from artemis.agent import agent    provider="anthropic",    provider="anthropic",
 
 
 
-await my_agent.initialize()await my_agent.initialize()
+# Returns an AgentBuilder instance    model_id="claude-3-sonnet-20240229"    model_id="claude-3-sonnet-20240229"
 
-response = await my_agent.act("Hello, world!")response = await my_agent.act("Hello, world!")
+builder = agent()
 
-``````
-
-
-
-## Factory Pattern## Factory Pattern
+```))
 
 
 
-### `agent()`### `agent()`
+## Configuration
 
 
 
-The main factory function for creating agent instances.The main factory function for creating agent instances.
+### `.config(**kwargs)`await my_agent.initialize()await my_agent.initialize()
 
 
 
-```python```python
+Configure the agent with various parameters.response = await my_agent.act("Hello, world!")response = await my_agent.act("Hello, world!")
+
+
+
+```python``````
+
+agent_instance = agent().config(
+
+    level="strict",                    # Grading/behavior level
+
+    provider="anthropic",              # Provider: openai, anthropic, local
+
+    model_id="claude-3-sonnet-20240229",  # Specific model## Factory Pattern## Factory Pattern
+
+    temperature=0.7,                   # Sampling temperature
+
+    max_tokens=1000,                   # Maximum response length
+
+    top_p=0.9,                        # Nucleus sampling
+
+    frequency_penalty=0.0,             # Repetition penalty### `agent()`### `agent()`
+
+    presence_penalty=0.0,              # Presence penalty
+
+    timeout=30.0,                      # Request timeout
+
+    max_retries=3,                     # Retry attempts
+
+    # Local model specificThe main factory function for creating agent instances.The main factory function for creating agent instances.
+
+    model=None,                        # PyTorch model instance
+
+    tokenizer=None,                    # Tokenizer instance
+
+    device="auto"                      # Device placement
+
+)```python```python
+
+```
 
 from artemis.agent import agentfrom artemis.agent import agent
 
+### Level System
 
+
+
+The level system controls the agent's behavior strictness and capabilities:
 
 # Returns an AgentBuilder instance# Returns an AgentBuilder instance
 
-builder = agent()builder = agent()
+- **`"lenient"`** (1-3): Very forgiving, encourages experimentation
 
-``````
+- **`"balanced"`** (4-6): Standard evaluation, balanced feedbackbuilder = agent()builder = agent()
 
+- **`"strict"`** (7-8): High standards, detailed critiques
 
+- **`"harsh"`** (9-10): Expert-level expectations, rigorous evaluation``````
+
+- **`"beginner"`**: Optimized for learning, patient feedback
+
+- **`"intermediate"`**: Moderate expectations, constructive feedback
+
+- **`"expert"`**: Professional-grade evaluation
 
 ## Configuration## Configuration
 
-
-
-### `.config(**kwargs)`### `.config(**kwargs)`
+### Provider-Specific Configuration
 
 
 
-Configure the agent with various parameters.Configure the agent with various parameters.
+#### OpenAI
 
+```python### `.config(**kwargs)`### `.config(**kwargs)`
 
+openai_agent = agent().config(
+
+    provider="openai",
+
+    model_id="gpt-4",                  # gpt-4, gpt-3.5-turbo, etc.
+
+    api_key="your-api-key",            # Optional if set in envConfigure the agent with various parameters.Configure the agent with various parameters.
+
+    organization="your-org-id"         # Optional
+
+)
+
+```
 
 ```python```python
 
-agent_instance = agent().config(agent_instance = agent().config(
+#### Anthropic
 
-    level="strict",                    # Grading/behavior level    level="strict",                    # Grading/behavior level
+```pythonagent_instance = agent().config(agent_instance = agent().config(
 
-    provider="anthropic",              # Provider: openai, anthropic, local    provider="anthropic",              # Provider: openai, anthropic, local
+claude_agent = agent().config(
 
-    model_id="claude-3-sonnet-20240229",  # Specific model    model_id="claude-3-sonnet-20240229",  # Specific model
+    provider="anthropic",    level="strict",                    # Grading/behavior level    level="strict",                    # Grading/behavior level
+
+    model_id="claude-3-sonnet-20240229",  # claude-3-sonnet, claude-3-haiku
+
+    api_key="your-api-key",            # Optional if set in env    provider="anthropic",              # Provider: openai, anthropic, local    provider="anthropic",              # Provider: openai, anthropic, local
+
+    max_tokens=4000                    # Claude-specific max tokens
+
+)    model_id="claude-3-sonnet-20240229",  # Specific model    model_id="claude-3-sonnet-20240229",  # Specific model
+
+```
 
     temperature=0.7,                   # Sampling temperature    temperature=0.7,                   # Sampling temperature
 
-    max_tokens=1000,                   # Maximum response length    max_tokens=1000,                   # Maximum response length
+#### Local Models
 
-    top_p=0.9,                        # Nucleus sampling    top_p=0.9,                        # Nucleus sampling
+```python    max_tokens=1000,                   # Maximum response length    max_tokens=1000,                   # Maximum response length
 
-    frequency_penalty=0.0,             # Repetition penalty    frequency_penalty=0.0,             # Repetition penalty
+local_agent = agent().config(
 
-    presence_penalty=0.0,              # Presence penalty    presence_penalty=0.0,              # Presence penalty
+    provider="local",    top_p=0.9,                        # Nucleus sampling    top_p=0.9,                        # Nucleus sampling
 
-    timeout=30.0,                      # Request timeout    timeout=30.0,                      # Request timeout
+    model=pytorch_model,               # Your PyTorch model
 
-    max_retries=3,                     # Retry attempts    max_retries=3,                     # Retry attempts
+    tokenizer=tokenizer,               # HuggingFace tokenizer    frequency_penalty=0.0,             # Repetition penalty    frequency_penalty=0.0,             # Repetition penalty
 
-    # Local model specific    # Local model specific
+    device="cuda:0",                   # Device placement
 
-    model=None,                        # PyTorch model instance    model=None,                        # PyTorch model instance
+    generation_config={                # Generation parameters    presence_penalty=0.0,              # Presence penalty    presence_penalty=0.0,              # Presence penalty
 
-    tokenizer=None,                    # Tokenizer instance    tokenizer=None,                    # Tokenizer instance
+        "max_new_tokens": 512,
 
-    device="auto"                      # Device placement    device="auto"                      # Device placement
+        "temperature": 0.7,    timeout=30.0,                      # Request timeout    timeout=30.0,                      # Request timeout
 
-))
+        "do_sample": True
 
-``````
+    }    max_retries=3,                     # Retry attempts    max_retries=3,                     # Retry attempts
+
+)
+
+```    # Local model specific    # Local model specific
 
 
 
-### Level System### Level System
+## Core Methods    model=None,                        # PyTorch model instance    model=None,                        # PyTorch model instance
 
 
+
+### `.initialize()`    tokenizer=None,                    # Tokenizer instance    tokenizer=None,                    # Tokenizer instance
+
+
+
+Initialize the agent and establish connections.    device="auto"                      # Device placement    device="auto"                      # Device placement
+
+
+
+```python))
+
+await agent_instance.initialize()
+
+`````````
+
+
+
+### `.act(prompt, **kwargs)`
+
+
+
+Generate a response to a prompt.### Level System### Level System
+
+
+
+```python
+
+response = await agent.act("Write a Python function to sort a list")
 
 The level system controls the agent's behavior strictness and capabilities:The level system controls the agent's behavior strictness and capabilities:
 
+# Response format:
 
+{
 
-- **`"lenient"`** (1-3): Very forgiving, encourages experimentation- **`"lenient"`** (1-3): Very forgiving, encourages experimentation
+    "text": "def sort_list(lst):\n    return sorted(lst)",
 
-- **`"balanced"`** (4-6): Standard evaluation, balanced feedback- **`"balanced"`** (4-6): Standard evaluation, balanced feedback
+    "metadata": {- **`"lenient"`** (1-3): Very forgiving, encourages experimentation- **`"lenient"`** (1-3): Very forgiving, encourages experimentation
 
-- **`"strict"`** (7-8): High standards, detailed critiques- **`"strict"`** (7-8): High standards, detailed critiques
+        "model": "claude-3-sonnet-20240229",
 
-- **`"harsh"`** (9-10): Expert-level expectations, rigorous evaluation- **`"harsh"`** (9-10): Expert-level expectations, rigorous evaluation
+        "provider": "anthropic",- **`"balanced"`** (4-6): Standard evaluation, balanced feedback- **`"balanced"`** (4-6): Standard evaluation, balanced feedback
+
+        "timestamp": "2025-09-15T10:30:00Z",
+
+        "tokens_used": 45- **`"strict"`** (7-8): High standards, detailed critiques- **`"strict"`** (7-8): High standards, detailed critiques
+
+    }
+
+}- **`"harsh"`** (9-10): Expert-level expectations, rigorous evaluation- **`"harsh"`** (9-10): Expert-level expectations, rigorous evaluation
+
+```
 
 - **`"beginner"`**: Optimized for learning, patient feedback- **`"beginner"`**: Optimized for learning, patient feedback
 
-- **`"intermediate"`**: Moderate expectations, constructive feedback- **`"intermediate"`**: Moderate expectations, constructive feedback
+**Parameters:**
 
-- **`"expert"`**: Professional-grade evaluation- **`"expert"`**: Professional-grade evaluation
+- `prompt` (str): The input prompt- **`"intermediate"`**: Moderate expectations, constructive feedback- **`"intermediate"`**: Moderate expectations, constructive feedback
+
+- `system_prompt` (str, optional): System-level instructions
+
+- `context` (List[Dict], optional): Conversation history- **`"expert"`**: Professional-grade evaluation- **`"expert"`**: Professional-grade evaluation
+
+- `tools` (List[Dict], optional): Available tools/functions
 
 
+
+## RL Teacher Model Functions
 
 ### Provider-Specific Configuration### Provider-Specific Configuration
 
+### `.grade(student_response, reference_answer=None, prompt=None, **kwargs)`
 
+
+
+Provide structured grading for a student response.
 
 #### OpenAI#### OpenAI
 
-```python```python
+```python
 
-openai_agent = agent().config(openai_agent = agent().config(
+grading = await teacher.grade(```python```python
 
-    provider="openai",    provider="openai",
+    student_response="def reverse_string(s): return s[::-1]",
 
-    model_id="gpt-4",                  # gpt-4, gpt-3.5-turbo, etc.    model_id="gpt-4",                  # gpt-4, gpt-3.5-turbo, etc.
+    reference_answer="Standard slicing approach",openai_agent = agent().config(openai_agent = agent().config(
 
-    api_key="your-api-key",            # Optional if set in env    api_key="your-api-key",            # Optional if set in env
+    prompt="Write a function to reverse a string"
 
-    organization="your-org-id"         # Optional    organization="your-org-id"         # Optional
+)    provider="openai",    provider="openai",
 
-))
+
+
+# Response format:    model_id="gpt-4",                  # gpt-4, gpt-3.5-turbo, etc.    model_id="gpt-4",                  # gpt-4, gpt-3.5-turbo, etc.
+
+{
+
+    "score": 85,    api_key="your-api-key",            # Optional if set in env    api_key="your-api-key",            # Optional if set in env
+
+    "feedback": "Good implementation using slicing. Clean and efficient.",
+
+    "breakdown": {    organization="your-org-id"         # Optional    organization="your-org-id"         # Optional
+
+        "correctness": 90,
+
+        "efficiency": 85,))
+
+        "readability": 80,
+
+        "style": 75,``````
+
+        "documentation": 60
+
+    },
+
+    "strengths": [
+
+        "Correct algorithm",#### Anthropic#### Anthropic
+
+        "Clean syntax",
+
+        "Efficient approach"```python```python
+
+    ],
+
+    "weaknesses": [claude_agent = agent().config(claude_agent = agent().config(
+
+        "Missing docstring",
+
+        "No input validation"    provider="anthropic",    provider="anthropic",
+
+    ],
+
+    "suggestions": [    model_id="claude-3-sonnet-20240229",  # claude-3-sonnet, claude-3-haiku    model_id="claude-3-sonnet-20240229",  # claude-3-sonnet, claude-3-haiku
+
+        "Add type hints",
+
+        "Include error handling",    api_key="your-api-key",            # Optional if set in env    api_key="your-api-key",            # Optional if set in env
+
+        "Add documentation"
+
+    ],    max_tokens=4000                    # Claude-specific max tokens    max_tokens=4000                    # Claude-specific max tokens
+
+    "confidence": 0.92
+
+}))
+
+```
 
 ``````
 
+**Grading Components:**
 
+- **Correctness**: Algorithm accuracy and edge case handling
 
-#### Anthropic#### Anthropic
+- **Efficiency**: Time and space complexity
 
-```python```python
+- **Readability**: Code clarity and structure#### Local Models#### Local Models
 
-claude_agent = agent().config(claude_agent = agent().config(
+- **Style**: Following language conventions
 
-    provider="anthropic",    provider="anthropic",
-
-    model_id="claude-3-sonnet-20240229",  # claude-3-sonnet, claude-3-haiku    model_id="claude-3-sonnet-20240229",  # claude-3-sonnet, claude-3-haiku
-
-    api_key="your-api-key",            # Optional if set in env    api_key="your-api-key",            # Optional if set in env
-
-    max_tokens=4000                    # Claude-specific max tokens    max_tokens=4000                    # Claude-specific max tokens
-
-))
-
-``````
+- **Documentation**: Comments and docstrings```python```python
 
 
 
-#### Local Models#### Local Models
-
-```python```python
-
-local_agent = agent().config(local_agent = agent().config(
-
-    provider="local",    provider="local",
-
-    model=pytorch_model,               # Your PyTorch model    model=pytorch_model,               # Your PyTorch model
-
-    tokenizer=tokenizer,               # HuggingFace tokenizer    tokenizer=tokenizer,               # HuggingFace tokenizer
-
-    device="cuda:0",                   # Device placement    device="cuda:0",                   # Device placement
-
-    generation_config={                # Generation parameters    generation_config={                # Generation parameters
-
-        "max_new_tokens": 512,        "max_new_tokens": 512,
-
-        "temperature": 0.7,        "temperature": 0.7,
-
-        "do_sample": True        "do_sample": True
-
-    }    }
-
-))
-
-``````
+### `.reward(student_response, reference_answer=None, prompt=None, **kwargs)`local_agent = agent().config(local_agent = agent().config(
 
 
 
-## Core Methods## Core Methods
+Generate reward signals for reinforcement learning.    provider="local",    provider="local",
 
 
+
+```python    model=pytorch_model,               # Your PyTorch model    model=pytorch_model,               # Your PyTorch model
+
+reward = await teacher.reward(
+
+    student_response="def factorial(n): return 1 if n <= 1 else n * factorial(n-1)",    tokenizer=tokenizer,               # HuggingFace tokenizer    tokenizer=tokenizer,               # HuggingFace tokenizer
+
+    prompt="Write a factorial function"
+
+)    device="cuda:0",                   # Device placement    device="cuda:0",                   # Device placement
+
+
+
+# Response format:    generation_config={                # Generation parameters    generation_config={                # Generation parameters
+
+{
+
+    "reward": 0.75,        "max_new_tokens": 512,        "max_new_tokens": 512,
+
+    "confidence": 0.88,
+
+    "reasoning": "Correct recursive implementation with base case",        "temperature": 0.7,        "temperature": 0.7,
+
+    "components": {
+
+        "correctness_reward": 0.9,        "do_sample": True        "do_sample": True
+
+        "efficiency_reward": 0.6,
+
+        "style_reward": 0.8    }    }
+
+    },
+
+    "feedback": "Good recursive solution, consider iterative for efficiency"))
+
+}
+
+`````````
+
+
+
+**Reward Range:** -1.0 to +1.0
+
+- **Positive rewards**: Good performance, correct solutions
+
+- **Negative rewards**: Errors, poor practices, inefficient code## Core Methods## Core Methods
+
+- **Zero reward**: Neutral or baseline performance
+
+
+
+### `.prefer(response_a, response_b, prompt=None, **kwargs)`
 
 ### `.initialize()`### `.initialize()`
 
+Compare two responses and determine preference.
 
 
-Initialize the agent and establish connections.Initialize the agent and establish connections.
+
+```python
+
+preference = await teacher.prefer(Initialize the agent and establish connections.Initialize the agent and establish connections.
+
+    response_a="def add(a, b): return a + b",
+
+    response_b="def add(x, y):\n    \"\"\"Add two numbers.\"\"\"\n    return x + y",
+
+    prompt="Write an addition function"
+
+)```python```python
 
 
+
+# Response format:await agent_instance.initialize()await agent_instance.initialize()
+
+{
+
+    "preferred": "B",``````
+
+    "confidence": 0.85,
+
+    "margin": 0.65,
+
+    "reasoning": "Response B includes documentation and better variable names",
+
+    "comparison": {### `.act(prompt, **kwargs)`### `.act(prompt, **kwargs)`
+
+        "correctness": {"A": 1.0, "B": 1.0},
+
+        "documentation": {"A": 0.0, "B": 1.0},
+
+        "style": {"A": 0.7, "B": 0.9}
+
+    },Generate a response to a prompt.Generate a response to a prompt.
+
+    "justification": "Both are correct, but B follows better practices"
+
+}
+
+```
 
 ```python```python
 
-await agent_instance.initialize()await agent_instance.initialize()
+**Preference Values:**
 
-``````
+- **"A"**: First response is preferredresponse = await agent.act("Write a Python function to sort a list")response = await agent.act("Write a Python function to sort a list")
 
+- **"B"**: Second response is preferred
 
-
-### `.act(prompt, **kwargs)`### `.act(prompt, **kwargs)`
-
-
-
-Generate a response to a prompt.Generate a response to a prompt.
+- **"TIE"**: Responses are equivalent
 
 
 
-```python```python
-
-response = await agent.act("Write a Python function to sort a list")response = await agent.act("Write a Python function to sort a list")
+## Advanced Features# Response format:# Response format:
 
 
 
-# Response format:# Response format:
+### Context Management{{
 
-{{
 
-    "text": "def sort_list(lst):\n    return sorted(lst)",    "text": "def sort_list(lst):\n    return sorted(lst)",
 
-    "metadata": {    "metadata": {
+```python    "text": "def sort_list(lst):\n    return sorted(lst)",    "text": "def sort_list(lst):\n    return sorted(lst)",
 
-        "model": "claude-3-sonnet-20240229",        "model": "claude-3-sonnet-20240229",
+# Maintain conversation context
 
-        "provider": "anthropic",        "provider": "anthropic",
+context = []    "metadata": {    "metadata": {
 
-        "timestamp": "2025-09-15T10:30:00Z",        "timestamp": "2025-09-15T10:30:00Z",
+
+
+response1 = await agent.act("What is Python?", context=context)        "model": "claude-3-sonnet-20240229",        "model": "claude-3-sonnet-20240229",
+
+context.append({"role": "user", "content": "What is Python?"})
+
+context.append({"role": "assistant", "content": response1["text"]})        "provider": "anthropic",        "provider": "anthropic",
+
+
+
+response2 = await agent.act("Give me an example", context=context)        "timestamp": "2025-09-15T10:30:00Z",        "timestamp": "2025-09-15T10:30:00Z",
+
+```
 
         "tokens_used": 45        "tokens_used": 45
 
+### Tool Integration
+
     }    }
 
-}}
+```python
 
-``````
+tools = [}}
 
+    {
 
+        "name": "calculator",``````
 
-**Parameters:****Parameters:**
+        "description": "Perform mathematical calculations",
 
-- `prompt` (str): The input prompt- `prompt` (str): The input prompt
+        "parameters": {
 
-- `system_prompt` (str, optional): System-level instructions- `system_prompt` (str, optional): System-level instructions
+            "type": "object",
+
+            "properties": {**Parameters:****Parameters:**
+
+                "expression": {"type": "string"}
+
+            }- `prompt` (str): The input prompt- `prompt` (str): The input prompt
+
+        }
+
+    }- `system_prompt` (str, optional): System-level instructions- `system_prompt` (str, optional): System-level instructions
+
+]
 
 - `context` (List[Dict], optional): Conversation history- `context` (List[Dict], optional): Conversation history
 
-- `tools` (List[Dict], optional): Available tools/functions- `tools` (List[Dict], optional): Available tools/functions
+response = await agent.act(
 
+    "Calculate 15 * 24",- `tools` (List[Dict], optional): Available tools/functions- `tools` (List[Dict], optional): Available tools/functions
 
+    tools=tools
+
+)
+
+```
 
 ## RL Teacher Model Functions## RL Teacher Model Functions
 
-
-
-### `.grade(student_response, reference_answer=None, prompt=None, **kwargs)`### `.grade(student_response, reference_answer=None, prompt=None, **kwargs)`
-
-
-
-Provide structured grading for a student response.Provide structured grading for a student response.
+### Batch Processing
 
 
 
-```python```python
+```python
 
-grading = await teacher.grade(grading = await teacher.grade(
+# Grade multiple responses### `.grade(student_response, reference_answer=None, prompt=None, **kwargs)`### `.grade(student_response, reference_answer=None, prompt=None, **kwargs)`
 
-    student_response="def reverse_string(s): return s[::-1]",    student_response="def reverse_string(s): return s[::-1]",
+responses = ["solution1", "solution2", "solution3"]
 
-    reference_answer="Standard slicing approach",    reference_answer="Standard slicing approach",
-
-    prompt="Write a function to reverse a string"    prompt="Write a function to reverse a string"
-
-))
+prompts = ["problem1", "problem2", "problem3"]
 
 
 
-# Response format:# Response format:
+grades = await asyncio.gather(*[Provide structured grading for a student response.Provide structured grading for a student response.
+
+    teacher.grade(resp, prompt=prompt)
+
+    for resp, prompt in zip(responses, prompts)
+
+])
+
+``````python```python
+
+
+
+### Error Handlinggrading = await teacher.grade(grading = await teacher.grade(
+
+
+
+```python    student_response="def reverse_string(s): return s[::-1]",    student_response="def reverse_string(s): return s[::-1]",
+
+try:
+
+    response = await agent.act("Complex prompt")    reference_answer="Standard slicing approach",    reference_answer="Standard slicing approach",
+
+except AgentInitializationError:
+
+    print("Agent not properly initialized")    prompt="Write a function to reverse a string"    prompt="Write a function to reverse a string"
+
+except APIError as e:
+
+    print(f"API error: {e}")))
+
+except TimeoutError:
+
+    print("Request timed out")
+
+except Exception as e:
+
+    print(f"Unexpected error: {e}")# Response format:# Response format:
+
+```
 
 {{
+
+## Training Integration
 
     "score": 85,    "score": 85,
 
+### GPRO Training Example
+
     "feedback": "Good implementation using slicing. Clean and efficient.",    "feedback": "Good implementation using slicing. Clean and efficient.",
 
-    "breakdown": {    "breakdown": {
+```python
 
-        "correctness": 90,        "correctness": 90,
+from artemis.rl_algorithms.grpo import GRPOTrainer, GRPOConfig    "breakdown": {    "breakdown": {
 
-        "efficiency": 85,        "efficiency": 85,
 
-        "readability": 80,        "readability": 80,
+
+# Setup teacher and student        "correctness": 90,        "correctness": 90,
+
+teacher = agent().config(level="strict", provider="anthropic")
+
+student = agent().config(level="beginner", provider="local", model=llama_model)        "efficiency": 85,        "efficiency": 85,
+
+
+
+await teacher.initialize()        "readability": 80,        "readability": 80,
+
+await student.initialize()
 
         "style": 75,        "style": 75,
 
-        "documentation": 60        "documentation": 60
+# Collect training data
 
-    },    },
+training_data = []        "documentation": 60        "documentation": 60
 
-    "strengths": [    "strengths": [
+for prompt in coding_problems:
 
-        "Correct algorithm",        "Correct algorithm",
+    student_response = await student.act(prompt)    },    },
 
-        "Clean syntax",        "Clean syntax",
+    teacher_grade = await teacher.grade(student_response["text"], prompt=prompt)
 
-        "Efficient approach"        "Efficient approach"
+    teacher_reward = await teacher.reward(student_response["text"], prompt=prompt)    "strengths": [    "strengths": [
+
+    
+
+    training_data.append({        "Correct algorithm",        "Correct algorithm",
+
+        "prompt": prompt,
+
+        "response": student_response["text"],        "Clean syntax",        "Clean syntax",
+
+        "reward": teacher_reward["reward"],
+
+        "grade": teacher_grade["score"]        "Efficient approach"        "Efficient approach"
+
+    })
 
     ],    ],
 
-    "weaknesses": [    "weaknesses": [
+# Setup GPRO trainer
+
+gpro_config = GRPOConfig(learning_rate=1e-5, batch_size=4)    "weaknesses": [    "weaknesses": [
+
+trainer = GRPOTrainer(config=gpro_config, model=llama_model, tokenizer=tokenizer)
 
         "Missing docstring",        "Missing docstring",
 
-        "No input validation"        "No input validation"
+# Train with preference pairs
 
-    ],    ],
+preference_pairs = create_preference_pairs(training_data)        "No input validation"        "No input validation"
 
-    "suggestions": [    "suggestions": [
+results = await trainer.train(preference_pairs)
 
-        "Add type hints",        "Add type hints",
+```    ],    ],
 
-        "Include error handling",        "Include error handling",
+
+
+## Best Practices    "suggestions": [    "suggestions": [
+
+
+
+### 1. Level Selection        "Add type hints",        "Add type hints",
+
+- Use **"strict"** for training high-quality models
+
+- Use **"balanced"** for general evaluation        "Include error handling",        "Include error handling",
+
+- Use **"lenient"** for encouraging experimentation
 
         "Add documentation"        "Add documentation"
 
-    ],    ],
+### 2. Provider Choice
 
-    "confidence": 0.92    "confidence": 0.92
+- **Anthropic Claude**: Excellent for code review and detailed feedback    ],    ],
 
-}}
+- **OpenAI GPT-4**: Strong general capabilities and reasoning
 
-``````
+- **Local models**: Full control and privacy    "confidence": 0.92    "confidence": 0.92
 
 
 
-**Grading Components:****Grading Components:**
+### 3. Structured Feedback}}
 
-- **Correctness**: Algorithm accuracy and edge case handling- **Correctness**: Algorithm accuracy and edge case handling
+- Always check `confidence` scores in responses
 
-- **Efficiency**: Time and space complexity- **Efficiency**: Time and space complexity
+- Use `breakdown` components for detailed analysis``````
 
-- **Readability**: Code clarity and structure- **Readability**: Code clarity and structure
+- Leverage `suggestions` for improvement guidance
+
+
+
+### 4. Performance Optimization
+
+- Use batch processing for multiple evaluations**Grading Components:****Grading Components:**
+
+- Set appropriate `timeout` values
+
+- Configure `max_retries` for reliability- **Correctness**: Algorithm accuracy and edge case handling- **Correctness**: Algorithm accuracy and edge case handling
+
+
+
+### 5. Error Handling- **Efficiency**: Time and space complexity- **Efficiency**: Time and space complexity
+
+- Always wrap API calls in try-catch blocks
+
+- Handle rate limiting gracefully- **Readability**: Code clarity and structure- **Readability**: Code clarity and structure
+
+- Implement fallback strategies
 
 - **Style**: Following language conventions- **Style**: Following language conventions
 
+## Migration from V1
+
 - **Documentation**: Comments and docstrings- **Documentation**: Comments and docstrings
 
+### Old API (V1)
 
+```python
+
+from artemis.core.agent import BaseAgent, AgentConfig, AgentType
 
 ### `.reward(student_response, reference_answer=None, prompt=None, **kwargs)`### `.reward(student_response, reference_answer=None, prompt=None, **kwargs)`
 
+config = AgentConfig(
 
+    name="my_agent",
 
-Generate reward signals for reinforcement learning.Generate reward signals for reinforcement learning.
+    agent_type=AgentType.LLM_BASED,
 
+    model_name="gpt-4"Generate reward signals for reinforcement learning.Generate reward signals for reinforcement learning.
 
+)
+
+agent = BaseAgent(config)
+
+```
 
 ```python```python
 
-reward = await teacher.reward(reward = await teacher.reward(
+### New API (V2)
+
+```pythonreward = await teacher.reward(reward = await teacher.reward(
+
+from artemis.agent import agent
 
     student_response="def factorial(n): return 1 if n <= 1 else n * factorial(n-1)",    student_response="def factorial(n): return 1 if n <= 1 else n * factorial(n-1)",
 
-    prompt="Write a factorial function"    prompt="Write a factorial function"
+my_agent = agent().config(
 
-))
+    provider="openai",    prompt="Write a factorial function"    prompt="Write a factorial function"
+
+    model_id="gpt-4"
+
+)))
+
+```
 
 
 
-# Response format:# Response format:
+### Key Changes
 
-{{
+1. **Factory pattern**: `agent()` instead of direct instantiation# Response format:# Response format:
 
-    "reward": 0.75,    "reward": 0.75,
+2. **Simplified config**: Direct parameters instead of config objects
 
-    "confidence": 0.88,    "confidence": 0.88,
+3. **Level system**: Replaces mode-based API{{
 
-    "reasoning": "Correct recursive implementation with base case",    "reasoning": "Correct recursive implementation with base case",
+4. **RL functions**: Built-in `grade()`, `reward()`, `prefer()` methods
 
-    "components": {    "components": {
+5. **Provider abstraction**: Unified interface across providers    "reward": 0.75,    "reward": 0.75,
 
-        "correctness_reward": 0.9,        "correctness_reward": 0.9,
 
-        "efficiency_reward": 0.6,        "efficiency_reward": 0.6,
+
+## Examples    "confidence": 0.88,    "confidence": 0.88,
+
+
+
+### Basic Usage    "reasoning": "Correct recursive implementation with base case",    "reasoning": "Correct recursive implementation with base case",
+
+```python
+
+# Create and use an agent    "components": {    "components": {
+
+chatbot = agent().config(level="balanced", provider="openai")
+
+await chatbot.initialize()        "correctness_reward": 0.9,        "correctness_reward": 0.9,
+
+response = await chatbot.act("Explain quantum computing")
+
+print(response["text"])        "efficiency_reward": 0.6,        "efficiency_reward": 0.6,
+
+```
 
         "style_reward": 0.8        "style_reward": 0.8
 
-    },    },
+### Code Evaluation
 
-    "feedback": "Good recursive solution, consider iterative for efficiency"    "feedback": "Good recursive solution, consider iterative for efficiency"
+```python    },    },
+
+# Setup code reviewer
+
+reviewer = agent().config(level="strict", provider="anthropic")    "feedback": "Good recursive solution, consider iterative for efficiency"    "feedback": "Good recursive solution, consider iterative for efficiency"
+
+await reviewer.initialize()
 
 }}
 
-``````
+code = "def bubble_sort(arr): ..."
 
+grade = await reviewer.grade(code, prompt="Implement bubble sort")``````
 
+print(f"Score: {grade['score']}/100")
+
+print(f"Feedback: {grade['feedback']}")
+
+```
 
 **Reward Range:** -1.0 to +1.0**Reward Range:** -1.0 to +1.0
 
-- **Positive rewards**: Good performance, correct solutions- **Positive rewards**: Good performance, correct solutions
+### Preference Learning
 
-- **Negative rewards**: Errors, poor practices, inefficient code- **Negative rewards**: Errors, poor practices, inefficient code
+```python- **Positive rewards**: Good performance, correct solutions- **Positive rewards**: Good performance, correct solutions
+
+# Compare two implementations
+
+judge = agent().config(level="balanced", provider="anthropic")- **Negative rewards**: Errors, poor practices, inefficient code- **Negative rewards**: Errors, poor practices, inefficient code
+
+await judge.initialize()
 
 - **Zero reward**: Neutral or baseline performance- **Zero reward**: Neutral or baseline performance
 
+solution_a = "Quick implementation"
+
+solution_b = "Detailed implementation with docs"
 
 
-### `.prefer(response_a, response_b, prompt=None, **kwargs)`### `.prefer(response_a, response_b, prompt=None, **kwargs)`
 
+preference = await judge.prefer(solution_a, solution_b, prompt="Code quality")### `.prefer(response_a, response_b, prompt=None, **kwargs)`### `.prefer(response_a, response_b, prompt=None, **kwargs)`
 
+print(f"Preferred: {preference['preferred']}")
+
+print(f"Reasoning: {preference['reasoning']}")
+
+```
 
 Compare two responses and determine preference.Compare two responses and determine preference.
 
+### Local Model Integration
 
+```python
+
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 ```python```python
 
-preference = await teacher.prefer(preference = await teacher.prefer(
+# Load local model
+
+tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")preference = await teacher.prefer(preference = await teacher.prefer(
+
+model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
 
     response_a="def add(a, b): return a + b",    response_a="def add(a, b): return a + b",
 
-    response_b="def add(x, y):\n    \"\"\"Add two numbers.\"\"\"\n    return x + y",    response_b="def add(x, y):\n    \"\"\"Add two numbers.\"\"\"\n    return x + y",
+# Create agent with local model
 
-    prompt="Write an addition function"    prompt="Write an addition function"
+local_agent = agent().config(    response_b="def add(x, y):\n    \"\"\"Add two numbers.\"\"\"\n    return x + y",    response_b="def add(x, y):\n    \"\"\"Add two numbers.\"\"\"\n    return x + y",
 
-))
+    provider="local",
+
+    model=model,    prompt="Write an addition function"    prompt="Write an addition function"
+
+    tokenizer=tokenizer,
+
+    temperature=0.7))
+
+)
 
 
 
-# Response format:# Response format:
+await local_agent.initialize()
+
+response = await local_agent.act("Hello!")# Response format:# Response format:
+
+```
 
 {{
 
+## API Reference Summary
+
     "preferred": "B",    "preferred": "B",
 
-    "confidence": 0.85,    "confidence": 0.85,
+### Factory Functions
 
-    "margin": 0.65,    "margin": 0.65,
+- `agent()` → AgentBuilder    "confidence": 0.85,    "confidence": 0.85,
+
+
+
+### Builder Methods    "margin": 0.65,    "margin": 0.65,
+
+- `.config(**kwargs)` → Agent
 
     "reasoning": "Response B includes documentation and better variable names",    "reasoning": "Response B includes documentation and better variable names",
 
-    "comparison": {    "comparison": {
+### Core Methods
+
+- `.initialize()` → None    "comparison": {    "comparison": {
+
+- `.act(prompt, **kwargs)` → Dict
 
         "correctness": {"A": 1.0, "B": 1.0},        "correctness": {"A": 1.0, "B": 1.0},
 
-        "documentation": {"A": 0.0, "B": 1.0},        "documentation": {"A": 0.0, "B": 1.0},
+### RL Teacher Methods
 
-        "style": {"A": 0.7, "B": 0.9}        "style": {"A": 0.7, "B": 0.9}
+- `.grade(student_response, **kwargs)` → Dict        "documentation": {"A": 0.0, "B": 1.0},        "documentation": {"A": 0.0, "B": 1.0},
 
-    },    },
+- `.reward(student_response, **kwargs)` → Dict
 
-    "justification": "Both are correct, but B follows better practices"    "justification": "Both are correct, but B follows better practices"
-
-}}
-
-``````
+- `.prefer(response_a, response_b, **kwargs)` → Dict        "style": {"A": 0.7, "B": 0.9}        "style": {"A": 0.7, "B": 0.9}
 
 
 
-**Preference Values:****Preference Values:**
+### Configuration Parameters    },    },
+
+- `level`: str - Behavior level (lenient/balanced/strict/harsh)
+
+- `provider`: str - API provider (openai/anthropic/local)    "justification": "Both are correct, but B follows better practices"    "justification": "Both are correct, but B follows better practices"
+
+- `model_id`: str - Specific model identifier
+
+- `temperature`: float - Sampling temperature (0.0-2.0)}}
+
+- `max_tokens`: int - Maximum response length
+
+- `timeout`: float - Request timeout in seconds``````
+
+- `max_retries`: int - Maximum retry attempts
+
+
+
+### Response Formats
+
+All methods return structured dictionaries with consistent fields for easy parsing and integration with training pipelines.**Preference Values:****Preference Values:**
 
 - **"A"**: First response is preferred- **"A"**: First response is preferred
 
