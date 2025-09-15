@@ -54,6 +54,7 @@
         "pages": [
           "artemis/tutorials/index",
           "artemis/tutorials/prism-tutorial",
+          "artemis/tutorials/llama-finetuning-tutorial",
           "artemis/tutorials/qwen3-4b-dpo",
           "artemis/tutorials/ppo-tutorial",
           "artemis/tutorials/grpo-tutorial",

@@ -20,20 +20,24 @@ graph TD
     A[Environment State s_t] --> B[Predictive Model Ensemble]
     A --> C[Stochastic Policy π]
     
-    B --> D[P(s_t+1, r_t+1 | s_t, a_t)]
-    B --> E[Uncertainty Estimation σ_PM]
+    B --> D[P_next_state_reward]
+    B --> E[Uncertainty σ_PM]
     
     C --> F[Base Action Distribution]
-    E --> G[Uncertainty-Guided Exploration]
-    F --> H[Final Action a_t]
-    G --> H
+    E --> G[Exploration Bonus]
     
     D --> I[Multi-Step Planning]
-    I --> J[Risk-Adjusted Value Function]
-    J --> K[Q_PRISM = E[R] - λ·Var[R]]
+    E --> I
+    I --> J[Risk-Adjusted Value]
+    J --> K[Q_PRISM = E_R - λ*Var_R]
     
-    K --> L[Optimal Action Selection]
-    L --> H
+    K --> L[Action Selection]
+    F --> L
+    G --> L
+    L --> H[Final Action a_t]
+    
+    H --> M[Environment Step]
+    M --> N[Next State s_t+1]
 ```
 
 ### 1. Predictive Model: `P(s_t+1, r_t+1 | s_t, a_t)`
