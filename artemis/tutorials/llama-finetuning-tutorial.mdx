@@ -1,9 +1,9 @@
 ---
-title: "Fine-tuning Llama 8B with Claude Sonnet 4 as Teacher Agent"
-description: "Complete guide to fine-tuning Meta Llama 8B Instruct using Claude Sonnet 4 as a teacher agent with Hugging Face datasets in a coding environment"
+title: "Fine-tuning Llama 8B with Artemis and Claude Sonnet 4 Teacher"
+description: "Complete guide to fine-tuning Meta Llama 8B Instruct using Artemis RL Gym with Claude Sonnet 4 as a teacher agent"
 ---
 
-This tutorial demonstrates how to fine-tune Meta Llama 8B Instruct using Claude Sonnet 4 as a teacher agent for evaluation and guidance, training on a Hugging Face dataset, then deploy the fine-tuned model to Hugging Face in SafeTensors format.
+This tutorial demonstrates how to fine-tune Meta Llama 8B Instruct using **Artemis RL Gym's built-in trainers** with Claude Sonnet 4 as a teacher agent for evaluation and guidance. We'll use Artemis's PPO trainer with integrated Claude teacher evaluation, then deploy the fine-tuned model to Hugging Face in SafeTensors format.
 
 ## Prerequisites
 
@@ -18,6 +18,7 @@ This tutorial demonstrates how to fine-tune Meta Llama 8B Instruct using Claude 
   - CUDA 11.8+
   - Git LFS
   - Hugging Face account
+  - **Artemis RL Gym**
 </Card>
 <Card title="API Access" icon="key">
   - Anthropic API key for Claude Sonnet 4
@@ -26,33 +27,27 @@ This tutorial demonstrates how to fine-tune Meta Llama 8B Instruct using Claude 
 </Card>
 <Card title="Knowledge Level" icon="graduation-cap">
   - Intermediate Python
-  - Basic ML/PyTorch
+  - Basic RL concepts
   - Command line proficiency
 </Card>
 </CardGroup>
 
 ## Environment Setup
 
-### 1. Install Dependencies
+### 1. Install Artemis RL Gym
 
 ```bash
 # Create virtual environment
-python -m venv llama_finetune
-source llama_finetune/bin/activate  # Linux/Mac
-# llama_finetune\Scripts\activate  # Windows
+python -m venv artemis_llama
+source artemis_llama/bin/activate  # Linux/Mac
+# artemis_llama\Scripts\activate  # Windows
 
-# Install core dependencies
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install transformers>=4.36.0
-pip install datasets
-pip install peft
-pip install bitsandbytes
-pip install accelerate
-pip install safetensors
-pip install huggingface_hub
+# Install Artemis RL Gym
+pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git
+
+# Install additional dependencies for teacher agent
 pip install anthropic
-pip install trl
-pip install wandb  # Optional for logging
+pip install wandb  # Optional for enhanced logging
 ```
 
 ### 2. Environment Variables
@@ -79,203 +74,25 @@ huggingface-cli login --token $HF_TOKEN
 ## Project Structure
 
 ```
-llama-finetuning/
+artemis-llama-finetuning/
 ├── .env
-├── requirements.txt
+├── main.py
 ├── src/
-│   ├── data_generation.py
-│   ├── finetuning.py
-│   ├── evaluation.py
-│   └── upload_model.py
+│   ├── claude_teacher.py
+│   ├── artemis_config.py
+│   └── model_upload.py
 ├── data/
-│   ├── training_data.json
-│   └── validation_data.json
+│   └── prompts.json
 ├── models/
-│   └── llama-8b-finetuned/
+│   └── llama-8b-artemis/
 └── configs/
     └── training_config.yaml
 ```
 
-## Step 1: Dataset Preparation from Hugging Face
+## Step 1: Claude Teacher Agent with Artemis Integration
 
 <Tabs>
-<Tab title="Dataset Loader">
-```python
-# src/dataset_preparation.py
-import os
-from datasets import load_dataset, Dataset
-from typing import Dict, List
-import json
-
-class DatasetPreparator:
-    def __init__(self, dataset_name: str = "HuggingFaceH4/ultrachat_200k"):
-        """
-        Initialize with a Hugging Face dataset
-        
-        Popular options:
-        - "HuggingFaceH4/ultrachat_200k": High-quality conversational data
-        - "tatsu-lab/alpaca": Instruction following dataset
-        - "OpenAssistant/oasst1": Open Assistant conversations
-        - "WizardLM/WizardLM_evol_instruct_V2_196k": Evolved instructions
-        """
-        self.dataset_name = dataset_name
-    
-    def load_and_prepare_dataset(self, split: str = "train_sft", max_samples: int = 5000) -> Dict:
-        """Load and prepare dataset from Hugging Face"""
-        
-        print(f"Loading dataset: {self.dataset_name}")
-        
-        # Load dataset
-        dataset = load_dataset(self.dataset_name, split=split)
-        
-        # Take a subset for faster training
-        if len(dataset) > max_samples:
-            dataset = dataset.select(range(max_samples))
-            print(f"Selected {max_samples} samples from {len(dataset)} total")
-        
-        # Convert to our format
-        formatted_data = []
-        
-        for item in dataset:
-            # Handle different dataset formats
-            if 'messages' in item:
-                # UltraChat format
-                messages = item['messages']
-                if len(messages) >= 2:
-                    instruction = messages[0]['content']
-                    response = messages[1]['content']
-                    
-                    formatted_data.append({
-                        'instruction': instruction,
-                        'output': response,
-                        'source': self.dataset_name
-                    })
-            
-            elif 'instruction' in item and 'output' in item:
-                # Alpaca format
-                instruction = item['instruction']
-                if 'input' in item and item['input']:
-                    instruction += f"\n\nInput: {item['input']}"
-                
-                formatted_data.append({
-                    'instruction': instruction,
-                    'output': item['output'],
-                    'source': self.dataset_name
-                })
-            
-            elif 'prompt' in item and 'response' in item:
-                # Generic format
-                formatted_data.append({
-                    'instruction': item['prompt'],
-                    'output': item['response'],
-                    'source': self.dataset_name
-                })
-        
-        # Split into train/validation
-        split_point = int(len(formatted_data) * 0.8)
-        train_data = formatted_data[:split_point]
-        val_data = formatted_data[split_point:]
-        
-        return {
-            'train': train_data,
-            'validation': val_data,
-            'total_samples': len(formatted_data)
-        }
-    
-    def save_dataset(self, data: Dict, output_dir: str = "data"):
-        """Save prepared dataset to files"""
-        
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Save training data
-        with open(f"{output_dir}/training_data.json", "w") as f:
-            json.dump(data['train'], f, indent=2)
-        
-        # Save validation data
-        with open(f"{output_dir}/validation_data.json", "w") as f:
-            json.dump(data['validation'], f, indent=2)
-        
-        print(f"Saved {len(data['train'])} training and {len(data['validation'])} validation samples")
-        
-        return f"{output_dir}/training_data.json", f"{output_dir}/validation_data.json"
-
-# Example usage
-def main():
-    # Initialize dataset preparator
-    preparator = DatasetPreparator("HuggingFaceH4/ultrachat_200k")
-    
-    # Load and prepare dataset
-    data = preparator.load_and_prepare_dataset(max_samples=1000)
-    
-    # Save to files
-    train_file, val_file = preparator.save_dataset(data)
-    
-    print(f"Dataset preparation completed!")
-    print(f"Training file: {train_file}")
-    print(f"Validation file: {val_file}")
-
-if __name__ == "__main__":
-    main()
-```
-</Tab>
-
-<Tab title="Alternative Datasets">
-```python
-# Popular HF datasets for instruction tuning
-
-RECOMMENDED_DATASETS = {
-    "ultrachat": {
-        "name": "HuggingFaceH4/ultrachat_200k",
-        "split": "train_sft",
-        "description": "High-quality multi-turn conversations",
-        "size": "200k samples"
-    },
-    
-    "alpaca": {
-        "name": "tatsu-lab/alpaca",
-        "split": "train",
-        "description": "Instruction-following dataset",
-        "size": "52k samples"
-    },
-    
-    "openassistant": {
-        "name": "OpenAssistant/oasst1",
-        "split": "train",
-        "description": "Human-generated conversations",
-        "size": "161k samples"
-    },
-    
-    "wizardlm": {
-        "name": "WizardLM/WizardLM_evol_instruct_V2_196k",
-        "split": "train",
-        "description": "Evolved instruction dataset",
-        "size": "196k samples"
-    },
-    
-    "dolly": {
-        "name": "databricks/databricks-dolly-15k",
-        "split": "train",
-        "description": "Human-generated instruction dataset",
-        "size": "15k samples"
-    }
-}
-
-# Load different datasets
-def load_dataset_by_name(dataset_key: str):
-    config = RECOMMENDED_DATASETS.get(dataset_key)
-    if not config:
-        raise ValueError(f"Unknown dataset: {dataset_key}")
-    
-    preparator = DatasetPreparator(config["name"])
-    return preparator.load_and_prepare_dataset(split=config["split"])
-```
-</Tab>
-</Tabs>
-
-## Step 2: Claude Sonnet 4 as Teacher Agent
-
-<Tabs>
-<Tab title="Teacher Agent">
+<Tab title="Claude Teacher Agent">
 ```python
 # src/claude_teacher.py
 import os
@@ -283,1096 +100,1093 @@ import asyncio
 from typing import Dict, List, Any
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from artemis.agent import agent
+from artemis.core.agent import BaseAgent, AgentConfig
 
 load_dotenv()
 
-class ClaudeTeacherAgent:
-    def __init__(self):
+class ClaudeTeacherAgent(BaseAgent):
+    """Claude Sonnet 4 teacher agent integrated with Artemis framework"""
+    
+    def __init__(self, config: AgentConfig = None):
+        super().__init__(config or AgentConfig())
         self.client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
         self.model = "claude-3-5-sonnet-20250514"
     
-    async def evaluate_response(self, instruction: str, student_response: str, reference_response: str = None) -> Dict[str, Any]:
+    async def evaluate_response(self, instruction: str, student_response: str) -> Dict[str, Any]:
         """Evaluate student model response using Claude as teacher"""
         
-        system_prompt = """You are an expert AI teacher evaluating responses from a student language model. 
+        system_prompt = """You are an expert AI teacher evaluating responses from a student language model being trained with reinforcement learning.
         
-        Provide detailed, constructive feedback focusing on:
-        1. Correctness and accuracy
-        2. Completeness and thoroughness
-        3. Clarity and coherence
-        4. Helpfulness and practical value
-        5. Safety and appropriateness
-        
-        Rate each aspect on a scale of 1-10 and provide an overall score.
-        Give specific suggestions for improvement."""
-        
-        user_prompt = f"""
-Instruction: {instruction}
-
-Student Response: {student_response}
-
-{f"Reference Response: {reference_response}" if reference_response else ""}
-
-Please evaluate this response and provide detailed feedback."""
-        
-        try:
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=1024,
-                temperature=0.3,  # Lower temperature for consistent evaluation
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}]
-            )
-            
-            evaluation = response.content[0].text
-            
-            # Extract numerical scores (simplified parsing)
-            # In practice, you might want to use structured output
-            return {
-                "evaluation": evaluation,
-                "teacher_model": self.model,
-                "instruction": instruction,
-                "student_response": student_response
-            }
-            
-        except Exception as e:
-            print(f"Error evaluating response: {e}")
-            return None
-    
-    async def generate_reward_signal(self, instruction: str, student_response: str) -> Dict[str, Any]:
-        """Generate reward signal for RL training"""
-        
-        system_prompt = """You are a reward model for reinforcement learning training. 
-        
-        Evaluate the student response and provide a reward score between -1.0 and 1.0:
+        Provide a reward score between -1.0 and 1.0:
         - 1.0: Excellent response, exceeds expectations
-        - 0.5-0.9: Good response with minor issues
+        - 0.5-0.9: Good response with minor issues  
         - 0.0-0.4: Adequate response but needs improvement
         - -0.1 to -0.5: Poor response with significant issues
         - -0.6 to -1.0: Harmful, incorrect, or inappropriate response
         
-        Provide the score and brief reasoning."""
+        Return JSON format: {"reward": float, "reasoning": str}"""
         
         user_prompt = f"""
 Instruction: {instruction}
 
 Student Response: {student_response}
 
-Provide a reward score (-1.0 to 1.0) and brief reasoning."""
+Evaluate and provide reward score with reasoning."""
         
         try:
             response = await self.client.messages.create(
                 model=self.model,
-                max_tokens=256,
-                temperature=0.2,
+                max_tokens=512,
+                temperature=0.2,  # Lower temperature for consistent evaluation
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_prompt}]
             )
             
             content = response.content[0].text
             
-            # Simple parsing to extract score (in practice, use structured output)
-            # This is a simplified version - you'd want more robust parsing
-            score = 0.0
+            # Parse the JSON response (simplified - in production use proper JSON parsing)
+            import re
+            import json
+            
             try:
-                # Look for patterns like "Score: 0.8" or "0.7/1.0"
-                import re
-                score_match = re.search(r'[-]?\d+\.?\d*', content)
-                if score_match:
-                    score = float(score_match.group())
-                    score = max(-1.0, min(1.0, score))  # Clamp to valid range
+                # Try to extract JSON from response
+                json_match = re.search(r'\{.*\}', content, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    reward = float(result.get("reward", 0.0))
+                    reasoning = result.get("reasoning", content)
+                else:
+                    # Fallback to score extraction
+                    score_match = re.search(r'[-]?\d+\.?\d*', content)
+                    reward = float(score_match.group()) if score_match else 0.0
+                    reasoning = content
             except:
-                score = 0.0
+                reward = 0.0
+                reasoning = content
+            
+            # Clamp reward to valid range
+            reward = max(-1.0, min(1.0, reward))
             
             return {
-                "reward": score,
-                "reasoning": content,
-                "teacher_model": self.model
+                "reward": reward,
+                "reasoning": reasoning,
+                "teacher_model": self.model,
+                "evaluation_full": content
             }
             
         except Exception as e:
-            print(f"Error generating reward: {e}")
+            print(f"Error evaluating response: {e}")
             return {"reward": 0.0, "reasoning": "Error occurred", "teacher_model": self.model}
-    
-    async def provide_guidance(self, instruction: str, student_response: str) -> Dict[str, str]:
-        """Provide guidance for improving the response"""
-        
-        system_prompt = """You are a helpful AI tutor. Analyze the student's response and provide specific, actionable guidance for improvement.
-        
-        Focus on:
-        1. What the student did well
-        2. Specific areas for improvement
-        3. Concrete suggestions for better responses
-        4. Examples of improved phrasing or content"""
-        
-        user_prompt = f"""
-Instruction: {instruction}
 
-Student Response: {student_response}
-
-Please provide specific guidance for improvement."""
-        
-        try:
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=512,
-                temperature=0.4,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}]
-            )
-            
-            return {
-                "guidance": response.content[0].text,
-                "teacher_model": self.model
-            }
-            
-        except Exception as e:
-            print(f"Error providing guidance: {e}")
-            return {"guidance": "Error occurred", "teacher_model": self.model}
-
-# Example usage
-async def main():
-    teacher = ClaudeTeacherAgent()
+# Create teacher agent using Artemis factory
+def create_claude_teacher():
+    """Create Claude teacher agent using Artemis agent factory"""
     
-    # Example evaluation
-    instruction = "Explain the concept of machine learning algorithms"
-    student_response = "Machine learning is when computers learn things automatically."
-    
-    # Get evaluation
-    evaluation = await teacher.evaluate_response(instruction, student_response)
-    print("Evaluation:", evaluation["evaluation"] if evaluation else "Failed")
-    
-    # Get reward signal
-    reward = await teacher.generate_reward_signal(instruction, student_response)
-    print(f"Reward: {reward['reward']}")
-    print(f"Reasoning: {reward['reasoning']}")
-    
-    # Get guidance
-    guidance = await teacher.provide_guidance(instruction, student_response)
-    print("Guidance:", guidance["guidance"])
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-</Tab>
-
-<Tab title="Integration with Training">
-```python
-# src/teacher_guided_training.py
-from transformers import TrainerCallback
-import asyncio
-import json
-from .claude_teacher import ClaudeTeacherAgent
-
-class TeacherGuidedCallback(TrainerCallback):
-    """Custom callback to integrate Claude teacher evaluation during training"""
-    
-    def __init__(self, teacher_agent: ClaudeTeacherAgent, eval_dataset, tokenizer, eval_frequency=100):
-        self.teacher_agent = teacher_agent
-        self.eval_dataset = eval_dataset
-        self.tokenizer = tokenizer
-        self.eval_frequency = eval_frequency
-        self.evaluation_history = []
-    
-    def on_step_end(self, args, state, control, model=None, **kwargs):
-        """Evaluate model with teacher agent periodically"""
-        
-        if state.global_step % self.eval_frequency == 0:
-            print(f"\n🍎 Teacher evaluation at step {state.global_step}")
-            
-            # Run async evaluation
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            
-            try:
-                evaluation_results = loop.run_until_complete(
-                    self._evaluate_with_teacher(model, state.global_step)
-                )
-                
-                # Log results
-                avg_reward = sum(r['reward'] for r in evaluation_results) / len(evaluation_results)
-                print(f"Average teacher reward: {avg_reward:.3f}")
-                
-                # Store for analysis
-                self.evaluation_history.append({
-                    'step': state.global_step,
-                    'avg_reward': avg_reward,
-                    'evaluations': evaluation_results
-                })
-                
-            finally:
-                loop.close()
-    
-    async def _evaluate_with_teacher(self, model, step, num_samples=5):
-        """Evaluate a few samples with the teacher"""
-        
-        results = []
-        
-        # Select random samples from eval dataset
-        import random
-        sample_indices = random.sample(range(len(self.eval_dataset)), min(num_samples, len(self.eval_dataset)))
-        
-        for idx in sample_indices:
-            sample = self.eval_dataset[idx]
-            instruction = sample['instruction']
-            
-            # Generate response with current model
-            student_response = self._generate_response(model, instruction)
-            
-            # Get teacher evaluation
-            reward_data = await self.teacher_agent.generate_reward_signal(instruction, student_response)
-            
-            results.append({
-                'instruction': instruction,
-                'student_response': student_response,
-                'reward': reward_data['reward'],
-                'reasoning': reward_data['reasoning']
-            })
-        
-        return results
-    
-    def _generate_response(self, model, instruction, max_length=512):
-        """Generate response using current model state"""
-        
-        prompt = f"""### Instruction:
-{instruction}
-
-### Response:
-"""
-        
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(model.device)
-        
-        with torch.no_grad():
-            outputs = model.generate(
-                **inputs,
-                max_new_tokens=max_length,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-            )
-        
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
-        # Extract only the response part
-        response_start = response.find("### Response:") + len("### Response:")
-        return response[response_start:].strip()
-    
-    def save_evaluation_history(self, path="teacher_evaluations.json"):
-        """Save all teacher evaluations for analysis"""
-        with open(path, 'w') as f:
-            json.dump(self.evaluation_history, f, indent=2)
-```
-</Tab>
-</Tabs>
-
-<Tabs>
-<Tab title="Fine-tuning Script">
-```python
-# src/finetuning.py
-import os
-import json
-import torch
-from datasets import Dataset
-from transformers import (
-    AutoTokenizer, 
-    AutoModelForCausalLM,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling
-)
-from peft import LoraConfig, get_peft_model, TaskType
-from trl import SFTTrainer
-import wandb
-
-class LlamaFineTuner:
-    def __init__(self, model_name: str = "meta-llama/Llama-2-8b-chat-hf"):
-        self.model_name = model_name
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # Initialize tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "right"
-        
-        # Load model with 4-bit quantization for memory efficiency
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-        )
-        
-        # Configure LoRA
-        self.lora_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            inference_mode=False,
-            r=16,  # Rank
-            lora_alpha=32,  # Alpha parameter
-            lora_dropout=0.1,
-            target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-        )
-        
-        # Apply LoRA
-        self.model = get_peft_model(self.model, self.lora_config)
-        self.model.print_trainable_parameters()
-    
-    def load_dataset(self, file_path: str) -> Dataset:
-        """Load and format dataset"""
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        
-        # Format data for instruction tuning
-        formatted_data = []
-        for item in data:
-            formatted_text = f"""### Instruction:
-{item['instruction']}
-
-### Response:
-{item['output']}"""
-            formatted_data.append({"text": formatted_text})
-        
-        return Dataset.from_list(formatted_data)
-    
-    def tokenize_function(self, examples):
-        """Tokenize the dataset"""
-        return self.tokenizer(
-            examples["text"],
-            truncation=True,
-            padding="max_length",
-            max_length=2048,
-            return_tensors="pt"
-        )
-    
-    def train(self, train_file: str, val_file: str, output_dir: str = "models/llama-8b-finetuned"):
-        """Fine-tune the model"""
-        
-        # Load datasets
-        train_dataset = self.load_dataset(train_file)
-        val_dataset = self.load_dataset(val_file)
-        
-        # Tokenize datasets
-        train_dataset = train_dataset.map(self.tokenize_function, batched=True)
-        val_dataset = val_dataset.map(self.tokenize_function, batched=True)
-        
-        # Training arguments
-        training_args = TrainingArguments(
-            output_dir=output_dir,
-            num_train_epochs=3,
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
-            gradient_accumulation_steps=4,
-            warmup_steps=100,
-            max_steps=1000,
-            learning_rate=2e-4,
-            fp16=True,
-            logging_steps=10,
-            evaluation_strategy="steps",
-            eval_steps=100,
-            save_steps=200,
-            save_total_limit=3,
-            load_best_model_at_end=True,
-            metric_for_best_model="eval_loss",
-            greater_is_better=False,
-            dataloader_pin_memory=False,
-            remove_unused_columns=False,
-            report_to="wandb" if os.getenv("WANDB_API_KEY") else None,
-        )
-        
-        # Initialize Weights & Biases (optional)
-        if os.getenv("WANDB_API_KEY"):
-            wandb.init(project="llama-finetuning", name="llama-8b-claude-data")
-        
-        # Data collator
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=self.tokenizer,
-            mlm=False,
-        )
-        
-        # Initialize trainer
-        trainer = SFTTrainer(
-            model=self.model,
-            train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            tokenizer=self.tokenizer,
-            data_collator=data_collator,
-            args=training_args,
-            max_seq_length=2048,
-            dataset_text_field="text",
-        )
-        
-        # Train the model
-        print("Starting training...")
-        trainer.train()
-        
-        # Save the model
-        trainer.save_model()
-        self.tokenizer.save_pretrained(output_dir)
-        
-        print(f"Model saved to {output_dir}")
-        
-        return trainer
-
-# Example usage
-def main():
-    # Initialize fine-tuner
-    fine_tuner = LlamaFineTuner()
-    
-    # Train the model
-    trainer = fine_tuner.train(
-        train_file="data/training_data.json",
-        val_file="data/validation_data.json"
+    # Configure Claude teacher agent
+    claude_config = AgentConfig(
+        agent_type="teacher",
+        model_name="claude-3-5-sonnet-20250514",
+        provider="anthropic"
     )
     
-    print("Fine-tuning completed!")
-
-if __name__ == "__main__":
-    main()
-```
-</Tab>
-
-<Tab title="Configuration">
-```yaml
-# configs/training_config.yaml
-model:
-  name: "meta-llama/Llama-2-8b-chat-hf"
-  max_length: 2048
-
-lora:
-  r: 16
-  alpha: 32
-  dropout: 0.1
-  target_modules:
-    - "q_proj"
-    - "v_proj"
-    - "k_proj"
-    - "o_proj"
-    - "gate_proj"
-    - "up_proj"
-    - "down_proj"
-
-training:
-  epochs: 3
-  batch_size: 4
-  gradient_accumulation_steps: 4
-  learning_rate: 2e-4
-  warmup_steps: 100
-  max_steps: 1000
-  eval_steps: 100
-  save_steps: 200
-
-quantization:
-  load_in_4bit: true
-  bnb_4bit_quant_type: "nf4"
-  bnb_4bit_compute_dtype: "float16"
-  bnb_4bit_use_double_quant: true
-```
-</Tab>
-</Tabs>
-
-## Step 3: Model Fine-tuning with Teacher Guidance
-
-<Tabs>
-<Tab title="Enhanced Fine-tuning Script">
-```python
-# src/finetuning.py
-import os
-import json
-import torch
-from datasets import Dataset
-from transformers import (
-    AutoTokenizer, 
-    AutoModelForCausalLM,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling
-)
-from peft import LoraConfig, get_peft_model, TaskType
-from trl import SFTTrainer
-import wandb
-from .claude_teacher import ClaudeTeacherAgent
-from .teacher_guided_training import TeacherGuidedCallback
-
-class LlamaFineTuner:
-    def __init__(self, model_name: str = "meta-llama/Llama-2-8b-chat-hf"):
-        self.model_name = model_name
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        # Initialize teacher agent
-        self.teacher_agent = ClaudeTeacherAgent()
-        
-        # Initialize tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        self.tokenizer.padding_side = "right"
-        
-        # Load model with 4-bit quantization for memory efficiency
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            load_in_4bit=True,
-            bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16,
-            bnb_4bit_use_double_quant=True,
-        )
-        
-        # Configure LoRA
-        self.lora_config = LoraConfig(
-            task_type=TaskType.CAUSAL_LM,
-            inference_mode=False,
-            r=16,  # Rank
-            lora_alpha=32,  # Alpha parameter
-            lora_dropout=0.1,
-            target_modules=["q_proj", "v_proj", "k_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
-        )
-        
-        # Apply LoRA
-        self.model = get_peft_model(self.model, self.lora_config)
-        self.model.print_trainable_parameters()
+    # Create using Artemis agent factory
+    teacher = agent().config(claude_config).create(ClaudeTeacherAgent)
     
-    def load_dataset(self, file_path: str) -> Dataset:
-        """Load and format dataset"""
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        
-        # Format data for instruction tuning
-        formatted_data = []
-        for item in data:
-            formatted_text = f"""### Instruction:
-{item['instruction']}
-
-### Response:
-{item['output']}"""
-            formatted_data.append({
-                "text": formatted_text,
-                "instruction": item['instruction'],
-                "output": item['output']
-            })
-        
-        return Dataset.from_list(formatted_data)
-    
-    def tokenize_function(self, examples):
-        """Tokenize the dataset"""
-        return self.tokenizer(
-            examples["text"],
-            truncation=True,
-            padding="max_length",
-            max_length=2048,
-            return_tensors="pt"
-        )
-    
-    def train(self, train_file: str, val_file: str, output_dir: str = "models/llama-8b-finetuned"):
-        """Fine-tune the model with teacher guidance"""
-        
-        # Load datasets
-        train_dataset = self.load_dataset(train_file)
-        val_dataset = self.load_dataset(val_file)
-        
-        # Tokenize datasets
-        train_dataset = train_dataset.map(self.tokenize_function, batched=True)
-        val_dataset = val_dataset.map(self.tokenize_function, batched=True)
-        
-        # Training arguments
-        training_args = TrainingArguments(
-            output_dir=output_dir,
-            num_train_epochs=3,
-            per_device_train_batch_size=4,
-            per_device_eval_batch_size=4,
-            gradient_accumulation_steps=4,
-            warmup_steps=100,
-            max_steps=1000,
-            learning_rate=2e-4,
-            fp16=True,
-            logging_steps=10,
-            evaluation_strategy="steps",
-            eval_steps=100,
-            save_steps=200,
-            save_total_limit=3,
-            load_best_model_at_end=True,
-            metric_for_best_model="eval_loss",
-            greater_is_better=False,
-            dataloader_pin_memory=False,
-            remove_unused_columns=False,
-            report_to="wandb" if os.getenv("WANDB_API_KEY") else None,
-        )
-        
-        # Initialize Weights & Biases (optional)
-        if os.getenv("WANDB_API_KEY"):
-            wandb.init(
-                project="llama-finetuning-claude-teacher", 
-                name="llama-8b-hf-data-claude-guidance"
-            )
-        
-        # Data collator
-        data_collator = DataCollatorForLanguageModeling(
-            tokenizer=self.tokenizer,
-            mlm=False,
-        )
-        
-        # Create teacher guidance callback
-        teacher_callback = TeacherGuidedCallback(
-            teacher_agent=self.teacher_agent,
-            eval_dataset=val_dataset,
-            tokenizer=self.tokenizer,
-            eval_frequency=100  # Evaluate every 100 steps
-        )
-        
-        # Initialize trainer
-        trainer = SFTTrainer(
-            model=self.model,
-            train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            tokenizer=self.tokenizer,
-            data_collator=data_collator,
-            args=training_args,
-            max_seq_length=2048,
-            dataset_text_field="text",
-            callbacks=[teacher_callback]  # Add teacher guidance
-        )
-        
-        # Train the model
-        print("🚀 Starting training with Claude teacher guidance...")
-        trainer.train()
-        
-        # Save the model
-        trainer.save_model()
-        self.tokenizer.save_pretrained(output_dir)
-        
-        # Save teacher evaluation history
-        teacher_callback.save_evaluation_history(
-            os.path.join(output_dir, "teacher_evaluations.json")
-        )
-        
-        print(f"Model saved to {output_dir}")
-        print("Teacher evaluation history saved")
-        
-        return trainer
+    return teacher
 
 # Example usage
-def main():
-    # Initialize fine-tuner
-    fine_tuner = LlamaFineTuner()
+async def test_teacher():
+    teacher = create_claude_teacher()
     
-    # Train the model
-    trainer = fine_tuner.train(
-        train_file="data/training_data.json",
-        val_file="data/validation_data.json"
-    )
+    instruction = "Explain the concept of machine learning"
+    response = "Machine learning is when computers learn patterns from data automatically."
     
-    print("Fine-tuning with teacher guidance completed!")
+    evaluation = await teacher.evaluate_response(instruction, response)
+    print(f"Reward: {evaluation['reward']}")
+    print(f"Reasoning: {evaluation['reasoning']}")
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(test_teacher())
 ```
 </Tab>
 
-<Tab title="Real-time Evaluation">
+<Tab title="Artemis Reward Model">
 ```python
-# src/realtime_evaluation.py
+# src/artemis_reward.py
 import asyncio
-import matplotlib.pyplot as plt
 from typing import List, Dict
-import json
+from artemis.core.reward import BaseRewardModel, RewardConfig
+from .claude_teacher import ClaudeTeacherAgent
 
-class RealTimeEvaluator:
-    """Monitor training progress with real-time teacher feedback"""
+class ClaudeRewardModel(BaseRewardModel):
+    """Artemis-compatible reward model using Claude teacher"""
     
-    def __init__(self, teacher_agent, model, tokenizer):
-        self.teacher_agent = teacher_agent
-        self.model = model
-        self.tokenizer = tokenizer
-        self.evaluation_history = []
+    def __init__(self, config: RewardConfig = None):
+        super().__init__(config or RewardConfig())
+        self.teacher_agent = ClaudeTeacherAgent()
     
-    async def continuous_evaluation(self, test_prompts: List[str], interval_steps: int = 50):
-        """Continuously evaluate model during training"""
-        
-        while True:
-            # Wait for interval
-            await asyncio.sleep(interval_steps)
-            
-            # Evaluate on test prompts
-            results = []
-            for prompt in test_prompts:
-                response = self._generate_response(prompt)
-                reward = await self.teacher_agent.generate_reward_signal(prompt, response)
-                
-                results.append({
-                    'prompt': prompt,
-                    'response': response,
-                    'reward': reward['reward'],
-                    'reasoning': reward['reasoning']
-                })
-            
-            # Calculate metrics
-            avg_reward = sum(r['reward'] for r in results) / len(results)
-            
-            # Store results
-            self.evaluation_history.append({
-                'timestamp': asyncio.get_event_loop().time(),
-                'avg_reward': avg_reward,
-                'results': results
-            })
-            
-            # Log progress
-            print(f"📊 Current average teacher reward: {avg_reward:.3f}")
+    async def compute_reward(self, prompt: str, response: str) -> float:
+        """Compute reward for a prompt-response pair"""
+        evaluation = await self.teacher_agent.evaluate_response(prompt, response)
+        return evaluation["reward"]
     
-    def plot_progress(self, save_path: str = "training_progress.png"):
-        """Plot training progress based on teacher feedback"""
+    async def compute_batch_rewards(self, prompts: List[str], responses: List[str]) -> List[float]:
+        """Compute rewards for a batch of prompt-response pairs"""
+        tasks = [
+            self.compute_reward(prompt, response) 
+            for prompt, response in zip(prompts, responses)
+        ]
         
-        if not self.evaluation_history:
-            print("No evaluation history to plot")
-            return
+        # Add delay to respect API rate limits
+        results = []
+        for task in tasks:
+            reward = await task
+            results.append(reward)
+            await asyncio.sleep(0.5)  # Rate limiting
         
-        timestamps = [e['timestamp'] for e in self.evaluation_history]
-        rewards = [e['avg_reward'] for e in self.evaluation_history]
-        
-        plt.figure(figsize=(10, 6))
-        plt.plot(timestamps, rewards, 'b-', linewidth=2, label='Teacher Reward')
-        plt.xlabel('Training Time')
-        plt.ylabel('Average Teacher Reward')
-        plt.title('Model Performance During Training (Teacher Evaluated)')
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        
-        print(f"Progress plot saved to {save_path}")
+        return results
     
-    def _generate_response(self, prompt: str, max_length: int = 256):
-        """Generate response for evaluation"""
-        
-        formatted_prompt = f"""### Instruction:
-{prompt}
-
-### Response:
-"""
-        
-        inputs = self.tokenizer(formatted_prompt, return_tensors="pt").to(self.model.device)
-        
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_length,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-        
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        response_start = response.find("### Response:") + len("### Response:")
-        return response[response_start:].strip()
+    def get_reward_statistics(self) -> Dict:
+        """Get reward model statistics"""
+        return {
+            "model_name": "claude-3-5-sonnet-20250514",
+            "reward_range": [-1.0, 1.0],
+            "evaluation_type": "teacher_guided"
+        }
 ```
 </Tab>
 </Tabs>
 
+## Step 2: Artemis Training Configuration
+
+<Tabs>
+<Tab title="PPO Configuration">
 ```python
-# src/evaluation.py
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-import json
+# src/artemis_config.py
+import os
+from artemis.training import PPOConfig, PPOTrainer
+from artemis.environments.dataset_envs.ultrachat import UltraChatEnvironment
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from .artemis_reward import ClaudeRewardModel
 
-class ModelEvaluator:
-    def __init__(self, base_model_name: str, adapter_path: str):
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
-        
-        # Load base model
-        base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
-        
-        # Load fine-tuned adapter
-        self.model = PeftModel.from_pretrained(base_model, adapter_path)
-        self.model.eval()
+def create_ppo_config():
+    """Create PPO configuration for Llama fine-tuning with Claude teacher"""
     
-    def generate_response(self, instruction: str, max_length: int = 512) -> str:
-        """Generate response using the fine-tuned model"""
+    config = PPOConfig(
+        # Model settings
+        model_name="meta-llama/Llama-2-8b-chat-hf",
         
-        prompt = f"""### Instruction:
-{instruction}
-
-### Response:
-"""
+        # PPO hyperparameters optimized for instruction following
+        learning_rate=1.41e-5,
+        batch_size=8,
+        mini_batch_size=2,
+        gradient_accumulation_steps=4,
+        ppo_epochs=4,
         
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        # PPO-specific parameters
+        cliprange=0.2,           # Policy clipping range
+        cliprange_value=0.2,     # Value function clipping
+        vf_coef=0.1,            # Value function coefficient
+        kl_coef=0.02,           # KL divergence coefficient  
+        target_kl=0.01,         # Target KL divergence
         
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_length,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-            )
+        # Generation parameters for student model
+        max_new_tokens=512,
+        temperature=0.7,
+        top_k=50,
+        top_p=0.95,
+        do_sample=True,
         
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Training settings
+        max_epochs=3,
+        warmup_steps=100,
+        max_steps=1000,
         
-        # Extract only the response part
-        response_start = response.find("### Response:") + len("### Response:")
-        return response[response_start:].strip()
-    
-    def evaluate_on_test_set(self, test_file: str) -> Dict:
-        """Evaluate model on test set"""
+        # Optimization
+        optimizer="adamw",
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+        scheduler="cosine",
         
-        with open(test_file, 'r') as f:
-            test_data = json.load(f)
+        # Memory optimization for 24GB GPU
+        gradient_checkpointing=True,
+        fp16=True,
+        dataloader_num_workers=4,
         
-        results = []
+        # Logging and evaluation
+        logging_steps=10,
+        save_steps=200,
+        eval_steps=100,
+        output_dir="./models/llama-8b-artemis",
+        report_to="wandb",
+        run_name="llama-8b-claude-teacher-ppo",
         
-        for item in test_data:
-            instruction = item['instruction']
-            expected = item['output']
-            
-            generated = self.generate_response(instruction)
-            
-            results.append({
-                'instruction': instruction,
-                'expected': expected,
-                'generated': generated
-            })
-        
-        return results
-
-# Example usage
-def main():
-    evaluator = ModelEvaluator(
-        base_model_name="meta-llama/Llama-2-8b-chat-hf",
-        adapter_path="models/llama-8b-finetuned"
+        # Teacher-specific settings
+        use_teacher_forcing=True,
+        teacher_evaluation_frequency=50,  # Evaluate with teacher every 50 steps
+        reward_model_type="claude_teacher"
     )
     
-    # Test single generation
-    test_instruction = "Explain the concept of machine learning algorithms in detail with practical examples."
-    response = evaluator.generate_response(test_instruction)
+    return config
+
+def create_llm_agent():
+    """Create LLM agent for Llama 8B with LoRA"""
     
-    print("Instruction:", test_instruction)
-    print("Response:", response)
+    agent_config = LLMAgentConfig(
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        
+        # LoRA configuration for memory efficiency
+        use_lora=True,
+        lora_config={
+            "r": 16,
+            "lora_alpha": 32,
+            "lora_dropout": 0.1,
+            "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", 
+                             "gate_proj", "up_proj", "down_proj"]
+        },
+        
+        # Quantization for 24GB GPU
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype="float16",
+        bnb_4bit_use_double_quant=True,
+        
+        # Generation settings
+        max_new_tokens=512,
+        temperature=0.7,
+        do_sample=True,
+        pad_token_id=None  # Will be set automatically
+    )
+    
+    return LLMAgent(agent_config)
+
+def create_environment():
+    """Create UltraChat environment for instruction following"""
+    
+    from artemis.environments.dataset_envs.ultrachat import UltraChatEnvironment
+    
+    env = UltraChatEnvironment(
+        dataset_name="HuggingFaceH4/ultrachat_200k",
+        split="train_sft",
+        max_samples=1000,  # Subset for efficient training
+        instruction_format="llama2",  # Use Llama 2 chat format
+        max_length=2048
+    )
+    
+    return env
+```
+</Tab>
+
+<Tab title="Alternative: DPO Configuration">
+```python
+# Alternative: Use DPO instead of PPO
+from artemis.training import DPOConfig, DPOTrainer
+
+def create_dpo_config():
+    """Create DPO configuration for preference learning with Claude teacher"""
+    
+    config = DPOConfig(
+        # Model settings
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        
+        # DPO hyperparameters
+        beta=0.1,
+        label_smoothing=0.0,
+        
+        # Training hyperparameters
+        learning_rate=5e-7,
+        batch_size=4,
+        gradient_accumulation_steps=4,
+        max_epochs=3,
+        warmup_steps=100,
+        
+        # Optimization
+        optimizer="adamw",
+        scheduler="cosine", 
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+        
+        # Memory optimization
+        gradient_checkpointing=True,
+        fp16=True,
+        dataloader_num_workers=4,
+        
+        # Logging and saving
+        logging_steps=10,
+        save_steps=500,
+        eval_steps=250,
+        output_dir="./models/llama-8b-artemis-dpo",
+        
+        # Evaluation
+        eval_strategy="steps",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_loss",
+        
+        # Wandb logging
+        report_to="wandb",
+        run_name="llama-8b-claude-teacher-dpo"
+    )
+    
+    return config
+```
+</Tab>
+
+<Tab title="GRPO Configuration">
+```python
+# Alternative: Use GRPO (Group Relative Policy Optimization)
+from artemis.rl_algorithms.grpo import GRPOConfig, GRPO
+
+def create_grpo_config():
+    """Create GRPO configuration - Artemis's advanced RL algorithm"""
+    
+    config = GRPOConfig(
+        # Model settings
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        
+        # GRPO-specific parameters
+        num_reference_policies=3,
+        reference_weight=0.1,
+        group_size=4,
+        relative_threshold=0.1,
+        
+        # RL hyperparameters  
+        learning_rate=1e-4,
+        kl_penalty_coefficient=0.02,
+        clip_epsilon=0.2,
+        value_function_coeff=0.1,
+        
+        # Training settings
+        batch_size=8,
+        mini_batch_size=2,
+        gradient_accumulation_steps=4,
+        max_epochs=3,
+        max_steps=1000,
+        
+        # Generation parameters
+        max_new_tokens=512,
+        temperature=0.7,
+        top_p=0.95,
+        
+        # Memory optimization
+        gradient_checkpointing=True,
+        fp16=True,
+        
+        # Logging
+        output_dir="./models/llama-8b-artemis-grpo",
+        logging_steps=10,
+        save_steps=200,
+        eval_steps=100
+    )
+    
+    return config
+```
+</Tab>
+</Tabs>
+
+## Step 3: Artemis PPO Training with Claude Teacher
+
+<Tabs>
+<Tab title="Main Training Script">
+```python
+# main.py - Complete Artemis training workflow
+import asyncio
+import os
+from dotenv import load_dotenv
+
+# Artemis imports
+from artemis.training import PPOTrainer, PPOConfig
+from artemis.agents.llm_agent import LLMAgent
+from artemis.environments.dataset_envs.ultrachat import UltraChatEnvironment
+from artemis import train_llm_grpo
+from artemis.rl_algorithms.grpo import GRPOConfig
+
+# Custom components
+from src.artemis_config import create_ppo_config, create_llm_agent, create_environment
+from src.artemis_reward import ClaudeRewardModel
+from src.claude_teacher import create_claude_teacher
+from src.model_upload import ArtemisModelUploader
+
+async def main():
+    """Complete Artemis fine-tuning workflow with Claude teacher"""
+    
+    load_dotenv()
+    
+    print("🚀 Starting Llama 8B Fine-tuning with Artemis RL Gym + Claude Teacher")
+    
+    # Step 1: Initialize Artemis components
+    print("\n⚙️ Step 1: Initializing Artemis components...")
+    
+    # Create PPO configuration
+    config = create_ppo_config()
+    
+    # Create LLM agent with LoRA
+    llm_agent = create_llm_agent()
+    print(f"✅ LLM Agent initialized: {llm_agent.model_name}")
+    
+    # Create environment with UltraChat dataset
+    environment = create_environment()
+    print(f"✅ Environment created with {len(environment.dataset)} samples")
+    
+    # Create Claude teacher reward model
+    reward_model = ClaudeRewardModel()
+    teacher_agent = create_claude_teacher()
+    print("✅ Claude teacher agent initialized")
+    
+    # Step 2: Initialize Artemis PPO Trainer
+    print("\n🧑‍🏫 Step 2: Setting up Artemis PPO Trainer...")
+    
+    trainer = PPOTrainer(
+        model=llm_agent,
+        config=config,
+        environment=environment,
+        reward_model=reward_model,
+        teacher_agent=teacher_agent  # Artemis will handle teacher integration
+    )
+    
+    print("✅ PPO Trainer initialized with Claude teacher integration")
+    
+    # Step 3: Start training with Artemis
+    print("\n🔥 Step 3: Starting Artemis PPO training with teacher guidance...")
+    
+    # Artemis handles the entire training loop including:
+    # - Policy updates with PPO
+    # - Teacher evaluation at specified intervals  
+    # - Reward model integration
+    # - Memory management and optimization
+    # - Distributed training (if configured)
+    # - Real-time monitoring
+    
+    training_results = await trainer.train()
+    
+    print("✅ Artemis PPO training completed!")
+    print(f"📊 Training Results:")
+    print(f"  Final Reward: {training_results.final_reward:.3f}")
+    print(f"  Training Episodes: {training_results.total_episodes}")
+    print(f"  Total Steps: {training_results.total_steps}")
+    print(f"  Training Time: {training_results.training_time:.2f}s")
+    
+    # Step 4: Model evaluation with Artemis
+    print("\n📈 Step 4: Evaluating trained model...")
+    
+    evaluation_results = await trainer.evaluate(
+        eval_episodes=100,
+        use_teacher_evaluation=True  # Use Claude teacher for evaluation
+    )
+    
+    print(f"📊 Evaluation Results:")
+    print(f"  Average Reward: {evaluation_results['avg_reward']:.3f}")
+    print(f"  Teacher Approval Rate: {evaluation_results['teacher_approval_rate']:.1%}")
+    print(f"  Policy Improvement: {evaluation_results['improvement_over_base']:.3f}")
+    
+    # Step 5: Save and upload model
+    print("\n💾 Step 5: Saving and uploading trained model...")
+    
+    # Save using Artemis built-in model saving
+    model_path = trainer.save_model("./models/llama-8b-artemis-ppo")
+    
+    # Upload to Hugging Face with Artemis integration
+    uploader = ArtemisModelUploader(
+        trainer=trainer,
+        hf_token=os.getenv("HF_TOKEN")
+    )
+    
+    repo_url = await uploader.upload_to_hf(
+        repo_name="your-username/llama-8b-artemis-claude-teacher",
+        private=False,
+        include_training_metadata=True  # Include Artemis training logs
+    )
+    
+    print(f"🎉 Model uploaded to: {repo_url}")
+    
+    return {
+        'training_results': training_results,
+        'evaluation_results': evaluation_results,
+        'model_path': model_path,
+        'repo_url': repo_url
+    }
+
+# Alternative: Use high-level Artemis function
+async def artemis_high_level_training():
+    """Use Artemis high-level training function"""
+    
+    # Configure GRPO (Artemis's advanced RL algorithm)
+    grpo_config = GRPOConfig(
+        learning_rate=1e-4,
+        num_reference_policies=3,
+        reference_weight=0.1,
+        kl_penalty_coefficient=0.02,
+        clip_epsilon=0.2
+    )
+    
+    # Train using Artemis high-level API
+    results = await train_llm_grpo(
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        env_type="ultrachat",  # Built-in UltraChat environment
+        num_episodes=500,
+        algorithm_config=grpo_config,
+        reward_model="claude_teacher",  # Use Claude teacher as reward model
+        distributed=True,  # Enable distributed training
+        monitoring=True,   # Enable real-time monitoring
+        output_dir="./models/llama-8b-artemis-grpo",
+        teacher_config={
+            "model": "claude-3-5-sonnet-20250514",
+            "evaluation_frequency": 50,
+            "reward_shaping": True
+        }
+    )
+    
+    print(f"🎉 High-level Artemis training completed!")
+    print(f"Final reward: {results.final_reward:.3f}")
+    
+    return results
 
 if __name__ == "__main__":
-    main()
+    # Choose training method
+    use_high_level_api = True
+    
+    if use_high_level_api:
+        results = asyncio.run(artemis_high_level_training())
+    else:
+        results = asyncio.run(main())
 ```
+</Tab>
 
-## Step 4: Post-Training Evaluation with Teacher Agent
-
+<Tab title="Artemis Training Monitor">
 ```python
-# src/evaluation.py
-import torch
-import asyncio
-import json
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
-from .claude_teacher import ClaudeTeacherAgent
+# src/artemis_monitor.py
+import wandb
+from artemis.utils.monitoring import TrainingMonitor, MetricsLogger
+from artemis.utils.callbacks import ArtemisCallback
 
-class ModelEvaluator:
-    def __init__(self, base_model_name: str, adapter_path: str):
-        self.tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+class ClaudeTeacherMonitor(ArtemisCallback):
+    """Custom Artemis callback for monitoring Claude teacher evaluations"""
+    
+    def __init__(self, teacher_agent, log_frequency=50):
+        super().__init__()
+        self.teacher_agent = teacher_agent
+        self.log_frequency = log_frequency
+        self.teacher_evaluations = []
+    
+    async def on_episode_end(self, episode_data):
+        """Called at the end of each training episode"""
         
-        # Load base model
-        base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+        if episode_data['episode'] % self.log_frequency == 0:
+            # Get teacher evaluation
+            prompt = episode_data['prompt']
+            response = episode_data['response']
+            
+            teacher_eval = await self.teacher_agent.evaluate_response(prompt, response)
+            
+            # Log to Artemis monitoring system
+            self.log_metrics({
+                'teacher_reward': teacher_eval['reward'],
+                'teacher_reasoning_length': len(teacher_eval['reasoning']),
+                'episode': episode_data['episode']
+            })
+            
+            # Store for analysis
+            self.teacher_evaluations.append({
+                'episode': episode_data['episode'],
+                'teacher_reward': teacher_eval['reward'],
+                'ppo_reward': episode_data['reward'],
+                'prompt': prompt,
+                'response': response,
+                'teacher_reasoning': teacher_eval['reasoning']
+            })
+    
+    def get_teacher_statistics(self):
+        """Get statistics about teacher evaluations"""
+        if not self.teacher_evaluations:
+            return {}
+        
+        rewards = [e['teacher_reward'] for e in self.teacher_evaluations]
+        
+        return {
+            'avg_teacher_reward': sum(rewards) / len(rewards),
+            'max_teacher_reward': max(rewards),
+            'min_teacher_reward': min(rewards),
+            'total_evaluations': len(self.teacher_evaluations),
+            'positive_rate': sum(1 for r in rewards if r > 0) / len(rewards)
+        }
+
+def setup_artemis_monitoring(trainer, teacher_agent):
+    """Setup comprehensive monitoring for Artemis training"""
+    
+    # Initialize Weights & Biases with Artemis integration
+    wandb.init(
+        project="artemis-llama-claude-teacher",
+        name="llama-8b-ppo-claude-guidance",
+        config=trainer.config.__dict__,
+        tags=["artemis", "ppo", "claude-teacher", "llama-8b"]
+    )
+    
+    # Add Artemis training monitor
+    training_monitor = TrainingMonitor(
+        log_frequency=10,
+        save_frequency=100,
+        metrics_to_track=[
+            'reward/mean',
+            'reward/std', 
+            'policy_loss',
+            'value_loss',
+            'kl_divergence',
+            'teacher_reward',
+            'learning_rate'
+        ]
+    )
+    
+    # Add Claude teacher monitor
+    teacher_monitor = ClaudeTeacherMonitor(teacher_agent, log_frequency=50)
+    
+    # Register callbacks with trainer
+    trainer.add_callback(training_monitor)
+    trainer.add_callback(teacher_monitor)
+    
+    return training_monitor, teacher_monitor
+```
+</Tab>
+
+<Tab title="Distributed Training">
+```python
+# src/distributed_training.py
+from artemis.distributed import DeploymentManager, DistributedConfig
+from artemis.rl_algorithms.distributed import DistributedPPO
+
+async def setup_distributed_training():
+    """Setup distributed training with Artemis"""
+    
+    # Configure distributed training
+    distributed_config = DistributedConfig(
+        num_workers=4,
+        num_environments_per_worker=2,
+        communication_backend="nccl",
+        gradient_compression=True,
+        async_updates=True
+    )
+    
+    # Deploy distributed training
+    deployment_manager = DeploymentManager()
+    
+    # Setup distributed cluster
+    cluster = await deployment_manager.create_cluster(
+        config=distributed_config,
+        auto_scale=True,
+        fault_tolerance=True
+    )
+    
+    # Create distributed PPO trainer
+    distributed_trainer = DistributedPPO(
+        config=create_ppo_config(),
+        cluster=cluster,
+        load_balancing=True
+    )
+    
+    print(f"🌐 Distributed training setup with {distributed_config.num_workers} workers")
+    
+    return distributed_trainer
+
+# Example distributed training
+async def distributed_training_example():
+    """Example of distributed training with Artemis"""
+    
+    trainer = await setup_distributed_training()
+    
+    # Train with distributed setup
+    results = await trainer.train(
+        total_episodes=2000,
+        checkpoint_frequency=200,
+        fault_recovery=True
+    )
+    
+    print(f"Distributed training completed: {results.final_reward:.3f}")
+    
+    return results
+```
+</Tab>
+</Tabs>
+
+## Step 4: Model Evaluation and Deployment
+
+<Tabs>
+<Tab title="Artemis Model Evaluation">
+```python
+# src/artemis_evaluation.py
+import asyncio
+from typing import Dict, List
+from artemis.evaluation import ModelEvaluator, EvaluationConfig
+from artemis.utils.metrics import RewardMetrics, PolicyMetrics
+from .claude_teacher import create_claude_teacher
+
+class ArtemisLlamaEvaluator:
+    """Comprehensive evaluation using Artemis framework with Claude teacher"""
+    
+    def __init__(self, trained_model_path: str):
+        self.model_path = trained_model_path
+        self.teacher_agent = create_claude_teacher()
+        
+        # Initialize Artemis evaluator
+        eval_config = EvaluationConfig(
+            model_path=trained_model_path,
+            evaluation_type="instruction_following",
+            metrics=["reward", "policy_improvement", "teacher_agreement"],
+            batch_size=8,
+            use_teacher_evaluation=True
         )
         
-        # Load fine-tuned adapter
-        self.model = PeftModel.from_pretrained(base_model, adapter_path)
-        self.model.eval()
-        
-        # Initialize teacher agent for evaluation
-        self.teacher_agent = ClaudeTeacherAgent()
+        self.evaluator = ModelEvaluator(eval_config)
     
-    def generate_response(self, instruction: str, max_length: int = 512) -> str:
-        """Generate response using the fine-tuned model"""
+    async def comprehensive_evaluation(self, test_prompts: List[str]) -> Dict:
+        """Run comprehensive evaluation with Artemis + Claude teacher"""
         
-        prompt = f"""### Instruction:
-{instruction}
-
-### Response:
-"""
+        print("🧪 Starting comprehensive evaluation with Artemis...")
         
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        # Artemis built-in evaluation
+        artemis_results = await self.evaluator.evaluate(
+            test_data=test_prompts,
+            metrics=["policy_performance", "generation_quality", "safety"]
+        )
         
-        with torch.no_grad():
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_length,
-                temperature=0.7,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id,
-                eos_token_id=self.tokenizer.eos_token_id,
-            )
+        # Claude teacher evaluation
+        teacher_results = await self._teacher_evaluation(test_prompts)
         
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Policy improvement analysis
+        improvement_analysis = await self._analyze_policy_improvement(test_prompts)
         
-        # Extract only the response part
-        response_start = response.find("### Response:") + len("### Response:")
-        return response[response_start:].strip()
+        # Combine results
+        evaluation_summary = {
+            'artemis_metrics': artemis_results,
+            'teacher_evaluation': teacher_results,
+            'policy_improvement': improvement_analysis,
+            'overall_score': self._calculate_overall_score(artemis_results, teacher_results)
+        }
+        
+        return evaluation_summary
     
-    async def comprehensive_evaluation(self, test_file: str) -> Dict:
-        """Comprehensive evaluation using Claude teacher agent"""
-        
-        with open(test_file, 'r') as f:
-            test_data = json.load(f)
+    async def _teacher_evaluation(self, test_prompts: List[str]) -> Dict:
+        """Detailed teacher evaluation"""
         
         results = []
         total_reward = 0
         
-        print(f"🧪 Evaluating {len(test_data)} examples with Claude teacher...")
-        
-        for i, item in enumerate(test_data):
-            instruction = item['instruction']
-            expected = item['output'] if 'output' in item else None
-            
-            # Generate response with fine-tuned model
-            generated = self.generate_response(instruction)
+        for prompt in test_prompts:
+            # Generate response with trained model
+            response = await self.evaluator.generate_response(prompt)
             
             # Get teacher evaluation
-            evaluation = await self.teacher_agent.evaluate_response(
-                instruction, generated, expected
-            )
+            teacher_eval = await self.teacher_agent.evaluate_response(prompt, response)
             
-            # Get reward signal
-            reward_data = await self.teacher_agent.generate_reward_signal(
-                instruction, generated
-            )
-            
-            # Get improvement guidance
-            guidance = await self.teacher_agent.provide_guidance(
-                instruction, generated
-            )
-            
-            result = {
-                'instruction': instruction,
-                'expected': expected,
-                'generated': generated,
-                'teacher_evaluation': evaluation['evaluation'] if evaluation else None,
-                'reward': reward_data['reward'],
-                'reward_reasoning': reward_data['reasoning'],
-                'guidance': guidance['guidance']
-            }
-            
-            results.append(result)
-            total_reward += reward_data['reward']
-            
-            print(f"Evaluated {i+1}/{len(test_data)} (Reward: {reward_data['reward']:.2f})")
-            
-            # Rate limiting
-            await asyncio.sleep(1)
-        
-        # Calculate summary statistics
-        avg_reward = total_reward / len(results)
-        positive_rewards = sum(1 for r in results if r['reward'] > 0)
-        excellent_responses = sum(1 for r in results if r['reward'] > 0.7)
-        
-        summary = {
-            'total_examples': len(results),
-            'average_reward': avg_reward,
-            'positive_rate': positive_rewards / len(results),
-            'excellent_rate': excellent_responses / len(results),
-            'detailed_results': results
-        }
-        
-        return summary
-    
-    async def compare_with_base_model(self, base_model_name: str, test_prompts: List[str]) -> Dict:
-        """Compare fine-tuned model with base model using teacher evaluation"""
-        
-        # Load base model for comparison
-        base_tokenizer = AutoTokenizer.from_pretrained(base_model_name)
-        base_tokenizer.pad_token = base_tokenizer.eos_token
-        
-        base_model = AutoModelForCausalLM.from_pretrained(
-            base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
-        
-        comparison_results = []
-        
-        print(f"🔍 Comparing fine-tuned vs base model on {len(test_prompts)} prompts...")
-        
-        for prompt in test_prompts:
-            # Generate with fine-tuned model
-            finetuned_response = self.generate_response(prompt)
-            
-            # Generate with base model
-            base_prompt = f"""### Instruction:
-{prompt}
-
-### Response:
-"""
-            
-            base_inputs = base_tokenizer(base_prompt, return_tensors="pt").to(base_model.device)
-            
-            with torch.no_grad():
-                base_outputs = base_model.generate(
-                    **base_inputs,
-                    max_new_tokens=512,
-                    temperature=0.7,
-                    do_sample=True,
-                    pad_token_id=base_tokenizer.eos_token_id,
-                )
-            
-            base_response = base_tokenizer.decode(base_outputs[0], skip_special_tokens=True)
-            base_response_start = base_response.find("### Response:") + len("### Response:")
-            base_response = base_response[base_response_start:].strip()
-            
-            # Get teacher evaluation for both
-            finetuned_reward = await self.teacher_agent.generate_reward_signal(prompt, finetuned_response)
-            base_reward = await self.teacher_agent.generate_reward_signal(prompt, base_response)
-            
-            comparison_results.append({
+            results.append({
                 'prompt': prompt,
-                'finetuned_response': finetuned_response,
-                'base_response': base_response,
-                'finetuned_reward': finetuned_reward['reward'],
-                'base_reward': base_reward['reward'],
-                'improvement': finetuned_reward['reward'] - base_reward['reward']
+                'response': response,
+                'teacher_reward': teacher_eval['reward'],
+                'teacher_reasoning': teacher_eval['reasoning']
             })
             
-            await asyncio.sleep(1)  # Rate limiting
-        
-        # Calculate improvement metrics
-        improvements = [r['improvement'] for r in comparison_results]
-        avg_improvement = sum(improvements) / len(improvements)
-        improved_count = sum(1 for imp in improvements if imp > 0)
+            total_reward += teacher_eval['reward']
+            
+            # Rate limiting
+            await asyncio.sleep(0.5)
         
         return {
-            'average_improvement': avg_improvement,
-            'improvement_rate': improved_count / len(comparison_results),
-            'detailed_comparisons': comparison_results
+            'average_teacher_reward': total_reward / len(results),
+            'detailed_evaluations': results,
+            'positive_rate': sum(1 for r in results if r['teacher_reward'] > 0) / len(results),
+            'excellent_rate': sum(1 for r in results if r['teacher_reward'] > 0.7) / len(results)
         }
+    
+    async def _analyze_policy_improvement(self, test_prompts: List[str]) -> Dict:
+        """Analyze policy improvement over base model"""
+        
+        # Compare with base model using Artemis
+        base_model_results = await self.evaluator.compare_with_baseline(
+            baseline_model="meta-llama/Llama-2-8b-chat-hf",
+            test_data=test_prompts
+        )
+        
+        improvement_metrics = {
+            'reward_improvement': base_model_results['reward_delta'],
+            'quality_improvement': base_model_results['quality_delta'],
+            'safety_improvement': base_model_results['safety_delta'],
+            'improvement_rate': base_model_results['improvement_percentage']
+        }
+        
+        return improvement_metrics
+    
+    def _calculate_overall_score(self, artemis_results: Dict, teacher_results: Dict) -> float:
+        """Calculate overall evaluation score"""
+        
+        artemis_score = artemis_results.get('overall_score', 0.0)
+        teacher_score = teacher_results.get('average_teacher_reward', 0.0)
+        
+        # Weighted combination (Artemis 60%, Teacher 40%)
+        overall_score = (artemis_score * 0.6) + (teacher_score * 0.4)
+        
+        return overall_score
 
-# Example usage
-async def main():
-    evaluator = ModelEvaluator(
-        base_model_name="meta-llama/Llama-2-8b-chat-hf",
-        adapter_path="models/llama-8b-finetuned"
-    )
+# Example evaluation
+async def evaluate_trained_model():
+    """Example evaluation of trained model"""
     
-    # Comprehensive evaluation
-    evaluation_results = await evaluator.comprehensive_evaluation("data/validation_data.json")
+    evaluator = ArtemisLlamaEvaluator("./models/llama-8b-artemis-ppo")
     
-    print(f"\n📊 Evaluation Results:")
-    print(f"Average Teacher Reward: {evaluation_results['average_reward']:.3f}")
-    print(f"Positive Response Rate: {evaluation_results['positive_rate']:.1%}")
-    print(f"Excellent Response Rate: {evaluation_results['excellent_rate']:.1%}")
+    test_prompts = [
+        "Explain machine learning algorithms with practical examples",
+        "How do you optimize database performance for large datasets?",
+        "What are the best practices for secure API design?",
+        "Describe the benefits of microservices architecture",
+        "How to implement effective error handling in production code?"
+    ]
     
-    # Save detailed results
-    with open("evaluation_results.json", "w") as f:
-        json.dump(evaluation_results, f, indent=2)
+    results = await evaluator.comprehensive_evaluation(test_prompts)
+    
+    print(f"📊 Evaluation Results:")
+    print(f"  Overall Score: {results['overall_score']:.3f}")
+    print(f"  Teacher Reward: {results['teacher_evaluation']['average_teacher_reward']:.3f}")
+    print(f"  Policy Improvement: {results['policy_improvement']['improvement_rate']:.1%}")
+    print(f"  Positive Rate: {results['teacher_evaluation']['positive_rate']:.1%}")
+    
+    return results
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    results = asyncio.run(evaluate_trained_model())
 ```
+</Tab>
+
+<Tab title="Model Upload with Artemis">
+```python
+# src/model_upload.py
+import os
+from artemis.utils.model_export import ModelExporter, ExportConfig
+from artemis.utils.hf_integration import HuggingFaceUploader
+from huggingface_hub import HfApi, create_repo
+
+class ArtemisModelUploader:
+    """Upload Artemis-trained model to Hugging Face with metadata"""
+    
+    def __init__(self, trainer, hf_token: str):
+        self.trainer = trainer
+        self.hf_token = hf_token
+        self.api = HfApi(token=hf_token)
+        
+        # Initialize Artemis model exporter
+        export_config = ExportConfig(
+            format="safetensors",
+            include_training_metadata=True,
+            include_config=True,
+            optimize_for_inference=True
+        )
+        
+        self.exporter = ModelExporter(export_config)
+        self.hf_uploader = HuggingFaceUploader(hf_token)
+    
+    async def upload_to_hf(self, repo_name: str, private: bool = False, 
+                          include_training_metadata: bool = True) -> str:
+        """Upload trained model to Hugging Face with Artemis integration"""
+        
+        print("📤 Preparing model for upload with Artemis...")
+        
+        # Export model using Artemis
+        export_path = await self.exporter.export_model(
+            trainer=self.trainer,
+            output_path="./export/llama-8b-artemis",
+            merge_adapters=True,
+            include_tokenizer=True
+        )
+        
+        # Create model card with Artemis training metadata
+        model_card = self._create_artemis_model_card(include_training_metadata)
+        
+        # Save model card
+        with open(os.path.join(export_path, "README.md"), "w") as f:
+            f.write(model_card)
+        
+        # Upload using Artemis HF integration
+        repo_url = await self.hf_uploader.upload_model(
+            model_path=export_path,
+            repo_name=repo_name,
+            private=private,
+            commit_message="Upload Artemis-trained Llama 8B with Claude teacher guidance"
+        )
+        
+        print(f"✅ Model uploaded successfully to: {repo_url}")
+        
+        return repo_url
+    
+    def _create_artemis_model_card(self, include_training_metadata: bool) -> str:
+        """Create comprehensive model card with Artemis metadata"""
+        
+        # Get training metadata from Artemis
+        training_metadata = self.trainer.get_training_metadata()
+        
+        model_card = f"""---
+language: en
+license: llama2
+library_name: transformers
+tags:
+- artemis-rl-gym
+- ppo
+- llama
+- fine-tuned
+- instruction-following
+- claude-teacher-guided
+- safetensors
+- reinforcement-learning
+base_model: meta-llama/Llama-2-8b-chat-hf
+---
+
+# Llama 8B Fine-tuned with Artemis RL Gym + Claude Sonnet 4 Teacher
+
+This model is a fine-tuned version of [meta-llama/Llama-2-8b-chat-hf](https://huggingface.co/meta-llama/Llama-2-8b-chat-hf) using **Artemis RL Gym** with Claude Sonnet 4 (claude-3-5-sonnet-20250514) as a teacher agent for guidance and evaluation.
+
+## Model Description
+
+- **Base Model**: meta-llama/Llama-2-8b-chat-hf
+- **Fine-tuning Framework**: Artemis RL Gym
+- **Algorithm**: PPO (Proximal Policy Optimization)
+- **Teacher Agent**: Claude Sonnet 4 (claude-3-5-sonnet-20250514)
+- **Training Data**: UltraChat 200k dataset
+- **Format**: SafeTensors
+
+## Artemis Training Results
+
+### Performance Metrics (Artemis + Claude Teacher)
+- **Final Reward**: {training_metadata.get('final_reward', 'N/A'):.3f}
+- **Policy Improvement**: {training_metadata.get('policy_improvement', 'N/A'):.3f}
+- **Teacher Approval Rate**: {training_metadata.get('teacher_approval_rate', 'N/A'):.1%}
+- **Training Episodes**: {training_metadata.get('total_episodes', 'N/A')}
+
+### Training Configuration
+- **Algorithm**: PPO with teacher guidance
+- **Learning Rate**: {training_metadata.get('learning_rate', '1.41e-5')}
+- **Batch Size**: {training_metadata.get('batch_size', '8')}
+- **KL Coefficient**: {training_metadata.get('kl_coef', '0.02')}
+- **Clip Range**: {training_metadata.get('cliprange', '0.2')}
+
+## Usage with Artemis
+
+```python
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+
+# Load the trained model with Artemis
+agent_config = LLMAgentConfig(
+    model_name="your-username/llama-8b-artemis-claude-teacher",
+    load_in_4bit=True,
+    temperature=0.7
+)
+
+agent = LLMAgent(agent_config)
+
+# Generate response
+response = await agent.generate("Explain machine learning algorithms")
+print(response)
+```
+
+## Standard Usage (without Artemis)
+
+```python
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
+
+# Load model and tokenizer
+model_name = "your-username/llama-8b-artemis-claude-teacher"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype=torch.float16,
+    device_map="auto"
+)
+
+# Generate response
+def generate_response(instruction):
+    prompt = f'''### Instruction:
+{{instruction}}
+
+### Response:
+'''
+    
+    inputs = tokenizer(prompt, return_tensors="pt")
+    outputs = model.generate(**inputs, max_new_tokens=512, temperature=0.7)
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    
+    return response.split("### Response:")[-1].strip()
+
+# Example usage
+response = generate_response("Explain machine learning algorithms")
+print(response)
+```
+
+## Performance Highlights
+
+This model demonstrates significant improvements over the base model through Artemis RL training:
+
+1. **Enhanced Instruction Following**: Trained with PPO for better task completion
+2. **Teacher-Validated Quality**: All responses evaluated by Claude Sonnet 4 during training
+3. **Optimized Policy**: Reinforcement learning optimization for human preferences
+4. **Consistent Performance**: Stable and reliable response quality across domains
+
+## Training Process
+
+The model was trained using the Artemis RL Gym framework, which provides:
+
+- **Advanced RL Algorithms**: PPO implementation optimized for LLMs
+- **Teacher Integration**: Seamless Claude Sonnet 4 evaluation during training
+- **Memory Optimization**: Efficient training on 24GB GPUs with LoRA and quantization
+- **Real-time Monitoring**: Comprehensive logging and evaluation metrics
+- **Distributed Support**: Scalable training across multiple GPUs/nodes
+
+## Limitations
+
+- Inherits limitations from the base Llama 2 8B model
+- Teacher evaluation based on Claude Sonnet 4's capabilities and potential biases
+- Performance depends on the quality of teacher feedback during training
+
+## Ethical Considerations
+
+This model was trained using AI teacher guidance from Claude Sonnet 4 within the Artemis RL Gym framework. Users should be aware of potential biases from the base model, training data, and teacher model evaluations.
+
+## Citation
+
+```bibtex
+@misc{{llama-8b-artemis-claude-teacher,
+  title={{Llama 8B Fine-tuned with Artemis RL Gym and Claude Sonnet 4 Teacher}},
+  author={{Your Name}},
+  year={{2025}},
+  howpublished={{\\url{{https://huggingface.co/your-username/llama-8b-artemis-claude-teacher}}}},
+  note={{Trained using Artemis RL Gym framework}}
+}}
+```
+
+## Acknowledgments
+
+- Meta AI for the Llama 2 base model
+- Anthropic for Claude Sonnet 4 teacher capabilities
+- Artemis RL Gym team for the training framework
+- HuggingFace for the UltraChat dataset and infrastructure
+"""
+        
+        return model_card
+
+# Example usage
+async def upload_example():
+    """Example model upload"""
+    
+    # Assuming trainer is available from training
+    uploader = ArtemisModelUploader(trainer, os.getenv("HF_TOKEN"))
+    
+    repo_url = await uploader.upload_to_hf(
+        repo_name="your-username/llama-8b-artemis-claude-teacher",
+        private=False,
+        include_training_metadata=True
+    )
+    
+    print(f"Model uploaded to: {repo_url}")
+
+if __name__ == "__main__":
+    asyncio.run(upload_example())
+```
+</Tab>
+</Tabs>
 
 <Tabs>
 <Tab title="Model Upload Script">
@@ -1683,380 +1497,349 @@ async def main():
     test_instruction = "Explain the concept of machine learning"
     test_response = "Machine learning is a method where computers learn patterns."
     
-    sample_evaluation = await teacher_agent.evaluate_response(test_instruction, test_response)
-    print(f"✅ Teacher agent initialized and tested")
+## Complete Workflow Example
+
+<Tabs>
+<Tab title="Full Artemis Workflow">
+```python
+# complete_workflow.py - End-to-end Artemis training with Claude teacher
+import asyncio
+import os
+from dotenv import load_dotenv
+
+# Artemis imports
+from artemis import train_llm_grpo
+from artemis.training import PPOTrainer, PPOConfig
+from artemis.agents.llm_agent import LLMAgent, LLMAgentConfig
+from artemis.environments.dataset_envs.ultrachat import UltraChatEnvironment
+from artemis.rl_algorithms.grpo import GRPOConfig
+from artemis.utils.monitoring import setup_wandb_logging
+
+# Custom components
+from src.claude_teacher import create_claude_teacher
+from src.artemis_config import create_ppo_config, create_llm_agent
+from src.artemis_evaluation import ArtemisLlamaEvaluator
+from src.model_upload import ArtemisModelUploader
+
+async def complete_artemis_workflow():
+    """Complete end-to-end workflow using Artemis RL Gym"""
     
-    # Step 3: Fine-tune with teacher guidance
-    print("\n🔥 Step 3: Fine-tuning Llama 8B with teacher guidance...")
+    load_dotenv()
     
-    fine_tuner = LlamaFineTuner()
-    trainer = fine_tuner.train(
-        train_file=train_file,
-        val_file=val_file
+    print("🚀 Starting Complete Artemis Workflow: Llama 8B + Claude Teacher")
+    print("=" * 60)
+    
+    # Step 1: Setup and Configuration
+    print("\n⚙️ Step 1: Artemis Setup and Configuration")
+    
+    # Setup monitoring
+    setup_wandb_logging(
+        project="artemis-llama-claude-teacher",
+        name="complete-workflow-run",
+        tags=["artemis", "llama-8b", "claude-teacher", "ppo"]
     )
     
-    print("✅ Fine-tuning with teacher guidance completed!")
+    # Create configurations
+    ppo_config = create_ppo_config()
+    llm_agent = create_llm_agent()
+    teacher_agent = create_claude_teacher()
     
-    # Step 4: Comprehensive evaluation
-    print("\n📈 Step 4: Comprehensive evaluation with teacher agent...")
+    print("✅ Artemis components initialized")
     
-    evaluator = ModelEvaluator(
-        base_model_name="meta-llama/Llama-2-8b-chat-hf",
-        adapter_path="models/llama-8b-finetuned"
+    # Step 2: High-Level Training with Artemis
+    print("\n🏋️ Step 2: High-Level Training with Artemis")
+    
+    # Option A: Use Artemis high-level API (Recommended)
+    training_results = await train_llm_grpo(
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        env_type="ultrachat",  # Built-in UltraChat environment
+        num_episodes=500,
+        algorithm_config=GRPOConfig(
+            learning_rate=1e-4,
+            num_reference_policies=3,
+            reference_weight=0.1,
+            kl_penalty_coefficient=0.02,
+            clip_epsilon=0.2,
+            use_teacher_evaluation=True
+        ),
+        reward_model="claude_teacher",  # Use Claude as reward model
+        teacher_config={
+            "model": "claude-3-5-sonnet-20250514",
+            "evaluation_frequency": 50,
+            "reward_shaping": True,
+            "api_key": os.getenv("ANTHROPIC_API_KEY")
+        },
+        distributed=True,  # Enable distributed training
+        monitoring=True,   # Enable real-time monitoring
+        output_dir="./models/llama-8b-artemis-complete",
+        save_checkpoints=True,
+        checkpoint_frequency=100
     )
     
-    # Comprehensive evaluation
-    evaluation_results = await evaluator.comprehensive_evaluation(val_file)
+    print("✅ Artemis training completed!")
+    print(f"📊 Results: Final Reward = {training_results.final_reward:.3f}")
     
-    print(f"📊 Final Results:")
-    print(f"  Average Teacher Reward: {evaluation_results['average_reward']:.3f}")
-    print(f"  Positive Response Rate: {evaluation_results['positive_rate']:.1%}")
-    print(f"  Excellent Response Rate: {evaluation_results['excellent_rate']:.1%}")
+    # Step 3: Comprehensive Evaluation
+    print("\n📈 Step 3: Comprehensive Evaluation")
     
-    # Step 5: Compare with base model
-    print("\n🔍 Step 5: Comparing with base model...")
+    evaluator = ArtemisLlamaEvaluator(training_results.model_path)
     
     test_prompts = [
-        "Explain machine learning algorithms with examples",
-        "How do you optimize database performance?",
-        "What are the best practices for API design?",
-        "Describe microservices architecture benefits",
-        "How to implement secure authentication?"
+        "Explain the fundamentals of machine learning with examples",
+        "How do you design a scalable microservices architecture?", 
+        "What are the best practices for database optimization?",
+        "Describe the principles of secure API development",
+        "How to implement effective error handling in production systems?"
     ]
     
-    comparison_results = await evaluator.compare_with_base_model(
-        "meta-llama/Llama-2-8b-chat-hf", 
-        test_prompts
-    )
+    evaluation_results = await evaluator.comprehensive_evaluation(test_prompts)
     
-    print(f"🎯 Improvement Results:")
-    print(f"  Average Improvement: {comparison_results['average_improvement']:+.3f}")
-    print(f"  Improvement Rate: {comparison_results['improvement_rate']:.1%}")
+    print(f"📊 Evaluation Summary:")
+    print(f"  Overall Score: {evaluation_results['overall_score']:.3f}")
+    print(f"  Teacher Reward: {evaluation_results['teacher_evaluation']['average_teacher_reward']:.3f}")
+    print(f"  Policy Improvement: {evaluation_results['policy_improvement']['improvement_rate']:.1%}")
     
-    # Step 6: Upload to Hugging Face
-    print("\n🚀 Step 6: Converting to SafeTensors and preparing for upload...")
+    # Step 4: Model Upload and Deployment
+    print("\n🚀 Step 4: Model Upload and Deployment")
     
-    uploader = ModelUploader(
-        base_model_name="meta-llama/Llama-2-8b-chat-hf",
-        adapter_path="models/llama-8b-finetuned",
+    uploader = ArtemisModelUploader(
+        trainer=training_results.trainer,
         hf_token=os.getenv("HF_TOKEN")
     )
     
-    # Merge and save
-    merged_path = "models/llama-8b-merged"
-    uploader.merge_and_save(merged_path)
+    repo_url = await uploader.upload_to_hf(
+        repo_name="your-username/llama-8b-artemis-complete",
+        private=False,
+        include_training_metadata=True
+    )
     
-    # Create enhanced model card with teacher evaluation results
-    create_enhanced_model_card(merged_path, evaluation_results, comparison_results)
+    print(f"✅ Model uploaded to: {repo_url}")
     
-    print("\n🎉 Fine-tuning workflow completed successfully!")
-    print("\n📝 Next steps:")
-    print("1. Review evaluation results in 'evaluation_results.json'")
-    print("2. Update repo name in upload script and run upload")
-    print("3. Test your uploaded model with the teacher agent")
+    # Step 5: Final Summary
+    print("\n🎉 Workflow Completed Successfully!")
+    print("=" * 60)
+    print(f"📈 Training Episodes: {training_results.total_episodes}")
+    print(f"⏱️ Training Time: {training_results.training_time:.2f}s")
+    print(f"🏆 Final Reward: {training_results.final_reward:.3f}")
+    print(f"🎯 Teacher Approval: {evaluation_results['teacher_evaluation']['positive_rate']:.1%}")
+    print(f"📊 Overall Score: {evaluation_results['overall_score']:.3f}")
+    print(f"🔗 Model URL: {repo_url}")
     
     return {
+        'training_results': training_results,
         'evaluation_results': evaluation_results,
-        'comparison_results': comparison_results,
-        'model_path': merged_path
+        'model_url': repo_url,
+        'success': True
     }
 
-def create_enhanced_model_card(model_path: str, eval_results: Dict, comparison_results: Dict):
-    """Create enhanced model card with teacher evaluation results"""
-    
-    model_card = f"""---
-language: en
-license: llama2
-library_name: transformers
-tags:
-- llama
-- fine-tuned
-- instruction-following
-- claude-teacher-guided
-- safetensors
-- ultrachat
-base_model: meta-llama/Llama-2-8b-chat-hf
----
+if __name__ == "__main__":
+    results = asyncio.run(complete_artemis_workflow())
+    print(f"\n🎊 All done! Check your results: {results}")
+```
+</Tab>
 
-# Llama 8B Fine-tuned with Claude Sonnet 4 Teacher Guidance
-
-This model is a fine-tuned version of [meta-llama/Llama-2-8b-chat-hf](https://huggingface.co/meta-llama/Llama-2-8b-chat-hf) using Claude Sonnet 4 (claude-3-5-sonnet-20250514) as a teacher agent for guidance and evaluation.
-
-## Model Description
-
-- **Base Model**: meta-llama/Llama-2-8b-chat-hf
-- **Fine-tuning Method**: LoRA (Low-Rank Adaptation) with teacher guidance
-- **Teacher Agent**: Claude Sonnet 4 (claude-3-5-sonnet-20250514)
-- **Training Data**: HuggingFace UltraChat 200k dataset
-- **Format**: SafeTensors
-
-## Teacher-Guided Training Results
-
-### Performance Metrics (Claude Teacher Evaluation)
-- **Average Teacher Reward**: {eval_results['average_reward']:.3f}/1.0
-- **Positive Response Rate**: {eval_results['positive_rate']:.1%}
-- **Excellent Response Rate**: {eval_results['excellent_rate']:.1%}
-
-### Improvement over Base Model
-- **Average Improvement**: {comparison_results['average_improvement']:+.3f}
-- **Improvement Rate**: {comparison_results['improvement_rate']:.1%}
-
-## Training Details
-
-### Dataset
-- **Source**: HuggingFaceH4/ultrachat_200k
-- **Size**: 1,000 high-quality samples (800 train, 200 validation)
-- **Format**: Instruction-response pairs
-
-### Teacher Agent Integration
-- **Real-time Evaluation**: Claude Sonnet 4 evaluated model responses during training
-- **Reward Signals**: Teacher provided reward scores (-1.0 to 1.0) for training guidance
-- **Continuous Guidance**: Improvement suggestions provided throughout training
-
-### Training Configuration
-- **LoRA Parameters**:
-  - Rank (r): 16
-  - Alpha: 32
-  - Dropout: 0.1
-  - Target modules: q_proj, v_proj, k_proj, o_proj, gate_proj, up_proj, down_proj
-- **Training Parameters**:
-  - Epochs: 3
-  - Batch size: 4 (with gradient accumulation)
-  - Learning rate: 2e-4
-  - Max sequence length: 2048
-
-## Usage
-
+<Tab title="Quick Start Script">
 ```python
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+# quick_start.py - Minimal Artemis setup
+import asyncio
+from artemis import train_llm_grpo
 
-# Load model and tokenizer
-model_name = "your-username/llama-8b-claude-teacher-guided"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    torch_dtype=torch.float16,
-    device_map="auto"
-)
-
-# Generate response
-def generate_response(instruction):
-    prompt = f'''### Instruction:
-{{instruction}}
-
-### Response:
-'''
+async def quick_artemis_training():
+    """Quick start with minimal configuration"""
     
-    inputs = tokenizer(prompt, return_tensors="pt")
-    outputs = model.generate(**inputs, max_new_tokens=512, temperature=0.7)
-    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    print("⚡ Quick Artemis Training - Llama 8B + Claude Teacher")
     
-    return response.split("### Response:")[-1].strip()
-
-# Example usage
-response = generate_response("Explain machine learning algorithms with examples")
-print(response)
-```
-
-## Performance Highlights
-
-This model demonstrates significant improvements over the base model, as validated by Claude Sonnet 4:
-
-1. **Enhanced Instruction Following**: Better understanding and execution of complex instructions
-2. **Improved Reasoning**: More logical and structured responses
-3. **Quality Consistency**: Higher consistency in response quality across different topics
-4. **Teacher Validation**: All improvements verified by state-of-the-art AI teacher
-
-## Limitations
-
-- Inherits limitations from the base Llama 2 8B model
-- Training dataset size is moderate (1,000 samples)
-- Teacher evaluation is based on Claude Sonnet 4's capabilities and potential biases
-
-## Ethical Considerations
-
-This model was trained with AI teacher guidance from Claude Sonnet 4. Users should be aware of potential biases inherited from both the base model, training data, and teacher model evaluations.
-
-## Citation
-
-```bibtex
-@misc{{llama-8b-claude-teacher-guided,
-  title={{Llama 8B Fine-tuned with Claude Sonnet 4 Teacher Guidance}},
-  author={{Your Name}},
-  year={{2025}},
-  howpublished={{\\url{{https://huggingface.co/your-username/llama-8b-claude-teacher-guided}}}}
-}}
-```
-
-## Acknowledgments
-
-- Meta AI for the Llama 2 base model
-- Anthropic for Claude Sonnet 4 teacher capabilities
-- HuggingFace for the UltraChat dataset and infrastructure
-"""
+    # Minimal configuration
+    results = await train_llm_grpo(
+        model_name="meta-llama/Llama-2-8b-chat-hf",
+        env_type="ultrachat",
+        num_episodes=100,  # Small number for quick test
+        reward_model="claude_teacher",
+        output_dir="./models/llama-8b-quick",
+        teacher_config={
+            "model": "claude-3-5-sonnet-20250514",
+            "evaluation_frequency": 25
+        }
+    )
     
-    with open(os.path.join(model_path, "README.md"), "w") as f:
-        f.write(model_card)
+    print(f"🎉 Quick training done! Final reward: {results.final_reward:.3f}")
+    return results
 
 if __name__ == "__main__":
-    results = asyncio.run(main())
-```
-```
-
-## Troubleshooting
-
-<AccordionGroup>
-<Accordion title="CUDA Out of Memory">
-**Solutions:**
-- Reduce batch size: `per_device_train_batch_size=2`
-- Increase gradient accumulation: `gradient_accumulation_steps=8`
-- Use 8-bit quantization: `load_in_8bit=True`
-- Reduce sequence length: `max_length=1024`
-</Accordion>
-
-<Accordion title="Slow Training Speed">
-**Optimizations:**
-- Enable mixed precision: `fp16=True` or `bf16=True`
-- Use gradient checkpointing: `gradient_checkpointing=True`
-- Optimize DataLoader: `dataloader_num_workers=4`
-- Use faster optimizer: `optim="adamw_torch_fused"`
-</Accordion>
-
-<Accordion title="Poor Model Performance">
-**Improvements:**
-- Increase training data quality and quantity
-- Adjust learning rate: try `1e-4` to `5e-4`
-- Increase LoRA rank: `r=32`
-- Train for more epochs
-- Use larger base model (13B, 70B)
-</Accordion>
-
-<Accordion title="Upload Failures">
-**Solutions:**
-- Check HF token permissions
-- Verify SafeTensors conversion: `ls -la models/llama-8b-merged/*.safetensors`
-- Use `git-lfs` for large files
-- Upload in smaller chunks if needed
-</Accordion>
-</AccordionGroup>
-
-## Best Practices
-
-<CardGroup cols={2}>
-<Card title="Data Quality" icon="chart-line">
-  - Use diverse, high-quality prompts
-  - Validate Claude-generated responses
-  - Include various difficulty levels
-  - Test on real-world scenarios
-</Card>
-
-<Card title="Training Efficiency" icon="rocket">
-  - Monitor GPU memory usage
-  - Use gradient accumulation for larger effective batch sizes
-  - Implement early stopping
-  - Save checkpoints regularly
-</Card>
-
-<Card title="Model Evaluation" icon="search">
-  - Test on held-out validation set
-  - Compare with base model performance
-  - Evaluate on downstream tasks
-  - Check for overfitting signs
-</Card>
-
-<Card title="Deployment" icon="upload">
-  - Verify SafeTensors format
-  - Test model loading after upload
-  - Include comprehensive model card
-  - Set appropriate repository visibility
-</Card>
-</CardGroup>
-
-## Advanced Configuration
-
-<Tabs>
-<Tab title="Multi-GPU Training">
-```python
-# For multiple GPUs, use accelerate
-from accelerate import Accelerator
-
-accelerator = Accelerator()
-
-# Modify training arguments
-training_args = TrainingArguments(
-    # ... other args ...
-    ddp_find_unused_parameters=False,
-    dataloader_pin_memory=False,
-    ddp_backend="nccl",  # for NVIDIA GPUs
-)
-
-# Use accelerator in trainer
-trainer = SFTTrainer(
-    # ... other args ...
-    args=training_args,
-)
-
-# Accelerate the training
-model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-    model, optimizer, train_dataloader, lr_scheduler
-)
-```
-</Tab>
-
-<Tab title="Custom LoRA Configuration">
-```python
-# Advanced LoRA config for better performance
-lora_config = LoraConfig(
-    r=64,  # Higher rank for more parameters
-    lora_alpha=128,  # Scaled alpha
-    target_modules=[
-        "q_proj", "k_proj", "v_proj", "o_proj",
-        "gate_proj", "up_proj", "down_proj",
-        "lm_head"  # Include language model head
-    ],
-    lora_dropout=0.05,  # Lower dropout
-    bias="none",
-    task_type=TaskType.CAUSAL_LM,
-    modules_to_save=["embed_tokens", "lm_head"]  # Save embeddings
-)
-```
-</Tab>
-
-<Tab title="Advanced Data Processing">
-```python
-# Enhanced data preprocessing
-def advanced_formatting_func(example):
-    """Advanced formatting with system prompts"""
-    
-    system_prompt = "You are a helpful AI assistant trained on high-quality data generated by Claude Sonnet 4."
-    
-    text = f"""<|system|>
-{system_prompt}
-<|user|>
-{example['instruction']}
-<|assistant|>
-{example['output']}<|end|>"""
-    
-    return {"text": text}
-
-# Apply advanced formatting
-train_dataset = train_dataset.map(advanced_formatting_func)
+    asyncio.run(quick_artemis_training())
 ```
 </Tab>
 </Tabs>
 
-## Conclusion
+## Troubleshooting
 
-This tutorial demonstrates a complete workflow for fine-tuning Meta Llama 8B Instruct using high-quality data generated by Claude Sonnet 4. The process includes:
+<AccordionGroup>
+<Accordion title="Artemis Installation Issues">
+**Common Solutions:**
+```bash
+# If Git LFS issues
+git lfs install
 
-1. **Data Generation**: Using Claude Sonnet 4 to create diverse, high-quality training examples
-2. **Model Fine-tuning**: Efficiently fine-tuning using LoRA and 4-bit quantization
-3. **Evaluation**: Testing the fine-tuned model's performance
-4. **Deployment**: Converting to SafeTensors format and uploading to Hugging Face
+# If CUDA issues  
+pip install torch --index-url https://download.pytorch.org/whl/cu118
 
-The resulting model benefits from the high-quality reasoning and instruction-following capabilities demonstrated in Claude Sonnet 4's generated training data, while maintaining the efficiency of the Llama 8B architecture.
+# If Artemis import errors
+pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git --force-reinstall
+```
+</Accordion>
 
-<Note>
-Remember to comply with Meta's Llama 2 license terms and Anthropic's usage policies when using this approach for commercial applications.
-</Note>
+<Accordion title="CUDA Memory Issues">
+**Artemis Memory Optimization:**
+```python
+# Use Artemis memory management
+from artemis.utils.memory import MemoryOptimizer
+
+optimizer = MemoryOptimizer()
+optimizer.optimize_for_gpu_memory(
+    model_size="8b",
+    available_memory="24gb",
+    enable_gradient_checkpointing=True,
+    use_4bit_quantization=True
+)
+```
+</Accordion>
+
+<Accordion title="Claude API Rate Limiting">
+**Artemis Rate Limiting:**
+```python
+# Artemis handles rate limiting automatically
+teacher_config = {
+    "model": "claude-3-5-sonnet-20250514",
+    "rate_limit": "auto",  # Artemis manages this
+    "batch_evaluation": True,
+    "async_evaluation": True
+}
+```
+</Accordion>
+
+<Accordion title="Training Convergence Issues">
+**Artemis Hyperparameter Tuning:**
+```python
+# Use Artemis auto-tuning
+from artemis.utils.autotuning import AutoHyperparameterTuner
+
+tuner = AutoHyperparameterTuner()
+optimal_config = await tuner.optimize(
+    base_config=your_config,
+    optimization_metric="teacher_reward",
+    trials=10
+)
+```
+</Accordion>
+</AccordionGroup>
+
+## Best Practices with Artemis
+
+<CardGroup cols={2}>
+<Card title="Artemis Configuration" icon="settings">
+  - Use built-in environment templates
+  - Enable Artemis monitoring for insights
+  - Leverage auto-optimization features
+  - Configure distributed training for scale
+</Card>
+
+<Card title="Teacher Integration" icon="graduation-cap">
+  - Set appropriate evaluation frequency
+  - Use Artemis reward shaping features
+  - Enable async teacher evaluation
+  - Monitor teacher-student agreement
+</Card>
+
+<Card title="Performance Optimization" icon="rocket">
+  - Use Artemis memory optimization
+  - Enable gradient compression for distributed
+  - Leverage Artemis checkpointing
+  - Configure auto-scaling for workloads
+</Card>
+
+<Card title="Production Deployment" icon="cloud">
+  - Use Artemis model export utilities
+  - Enable SafeTensors format
+  - Include comprehensive metadata
+  - Verify model compatibility
+</Card>
+</CardGroup>
+
+## Advanced Artemis Features
+
+<Tabs>
+<Tab title="Multi-Objective Optimization">
+```python
+from artemis.rl_algorithms.multi_objective import MultiObjectiveOptimizer
+
+# Optimize for multiple goals
+optimizer = MultiObjectiveOptimizer(
+    objectives=[
+        "teacher_reward",      # Claude teacher satisfaction
+        "policy_improvement",  # RL performance
+        "safety_score",       # Safety evaluation
+        "efficiency"          # Computational efficiency
+    ],
+    weights=[0.4, 0.3, 0.2, 0.1]
+)
+
+results = await optimizer.train(config, agent, environment)
+```
+</Tab>
+
+<Tab title="Curriculum Learning">
+```python
+from artemis.rl_algorithms.curriculum import CurriculumLearningManager
+
+# Progressive difficulty training
+curriculum = CurriculumLearningManager(
+    stages=[
+        {"difficulty": "easy", "episodes": 100},
+        {"difficulty": "medium", "episodes": 200}, 
+        {"difficulty": "hard", "episodes": 200}
+    ],
+    adaptation_criteria="teacher_reward"
+)
+
+results = await curriculum.train(trainer)
+```
+</Tab>
+
+<Tab title="Fault Tolerance">
+```python
+from artemis.distributed import FaultTolerantTrainer
+
+# Automatic recovery from failures
+ft_trainer = FaultTolerantTrainer(
+    base_trainer=trainer,
+    checkpoint_frequency=50,
+    auto_recovery=True,
+    backup_storage="s3://your-bucket/artemis-checkpoints"
+)
+
+results = await ft_trainer.train()
+```
+</Tab>
+</Tabs>
+
+## Next Steps
+
+<Steps>
+<Step title="Run the Tutorial">
+  Execute the complete workflow script and monitor training progress through Artemis dashboards.
+</Step>
+
+<Step title="Experiment with Configurations">
+  Try different RL algorithms (PPO, DPO, GRPO) and teacher evaluation frequencies to optimize performance.
+</Step>
+
+<Step title="Scale with Distributed Training">
+  Use Artemis distributed training features to scale across multiple GPUs or nodes for larger models.
+</Step>
+
+<Step title="Deploy to Production">
+  Leverage Artemis deployment utilities for production-ready model serving and monitoring.
+</Step>
+</Steps>
+
+Congratulations! You've successfully fine-tuned Llama 8B using **Artemis RL Gym** with Claude Sonnet 4 as a teacher agent. The Artemis framework handled the complex RL training loop, teacher integration, memory optimization, and deployment pipeline, making advanced AI training accessible and efficient.
