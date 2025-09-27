@@ -38,13 +38,14 @@
       }
       ,
       {
-        "group": "Loom API",
+        "group": "Loom AI API",
         "pages": [
           "loomlabs/loomapi/index",
           "loomlabs/loomapi/authentication",
           "loomlabs/loomapi/endpoints",
           "loomlabs/loomapi/examples",
-          "loomlabs/loomapi/errors"
+          "loomlabs/loomapi/errors",
+          "loomlabs/loomapi/models"
         ]
       }
     ],
