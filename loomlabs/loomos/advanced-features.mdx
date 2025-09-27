@@ -8,8 +8,8 @@ description: "Expanded advanced features: Tapestry, Weaver, container runtime, t
 from core.tapestry import Pipeline, ModelStage
 
 pipeline = Pipeline([
-    ModelStage(model="gpt-4-base"),
-    ModelStage(model="prism-verifier", postprocess=True)
+  ModelStage(model="Apollo-1-4B"),
+  ModelStage(model="prism-verifier", postprocess=True)
 ])
 result = await pipeline.run(input_data)
 ```
@@ -23,8 +23,8 @@ from core.tapestry import ConditionalRouter, Pipeline
 
 router = ConditionalRouter(
     condition=lambda input: len(input) > 1000,  # Route based on input length
-    true_branch=ModelStage(model="gpt-4-large"),
-    false_branch=ModelStage(model="gpt-4-base")
+  true_branch=ModelStage(model="Apollo-1-8B"),
+  false_branch=ModelStage(model="Apollo-1-4B")
 )
 
 pipeline = Pipeline([router])

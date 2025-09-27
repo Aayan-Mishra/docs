@@ -3,8 +3,8 @@
   "name": "Loom Labs Documentation",
   "theme": "maple",
   "logo": {
-    "dark": "/logo/loomlogo.svg",
-    "light": "/logo/loomlogo.svg"
+    "dark": "/logo/loomlogo.png",
+    "light": "/logo/loomlogo.png"
   },
   "favicon": "/favicon.svg",
   "colors": {

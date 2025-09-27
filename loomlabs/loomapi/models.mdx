@@ -1,16 +1,23 @@
 ---
-title: "Models — Apollo"
-description: "Model cards and guidance for the Apollo family (Apollo-1 2B / 4B / 8B)."
+title: "Models — Apollo & Daedalus"
+description: "Model cards and guidance for the Apollo family and Daedalus family (code models)."
 ---
 
 # Apollo model family
 
-Loom Labs provides the Apollo family of models tuned for different latency, cost, and capability trade-offs. All models support a 128k token context window and are available in the Loom AI API as `Apollo-1-2B`, `Apollo-1-4B`, and `Apollo-1-8B`.
+Loom Labs provides the Apollo family of models tuned for different latency, cost, and capability trade-offs, as well as the Daedalus family optimized for code generation and reasoning. All Apollo models support a 128k token context window and are available in the Loom AI API as `Apollo-1-2B`, `Apollo-1-4B`, and `Apollo-1-8B`.
+
+The Daedalus family (`Daedalus-1-2B`, `Daedalus-1-8B`) is purpose-built for code reasoning, program synthesis, and debugging workflows.
 
 <CardGroup columns={3}>
   <Card title="Apollo-1 2B" subtitle="Model ID: Apollo-1-2B" description="Lightweight model for low-cost inference and simple tasks. 128k context." />
   <Card title="Apollo-1 4B" subtitle="Model ID: Apollo-1-4B" description="Balanced model for production use-cases. 128k context." />
   <Card title="Apollo-1 8B" subtitle="Model ID: Apollo-1-8B" description="High-capacity model for advanced tasks and deep reasoning. 128k context." />
+</CardGroup>
+
+<CardGroup columns={2}>
+  <Card title="Daedalus-1 2B" subtitle="Model ID: Daedalus-1-2B" description="2B parameter code reasoning model optimized for structured code generation and debugging." />
+  <Card title="Daedalus-1 8B" subtitle="Model ID: Daedalus-1-8B" description="8B parameter code model for advanced code synthesis and reasoning with improved safety alignment." />
 </CardGroup>
 
 ## Apollo-1 2B
@@ -66,3 +73,37 @@ console.log(await res.json())
 ```
 
 <Note>All Apollo models currently return OpenAI-like shapes and are compatible with common SDKs. Choose a model based on your latency/cost tradeoffs.</Note>
+
+## Daedalus-1 2B
+
+- Model ID: `Daedalus-1-2B`
+- Availability: Free (Beta)
+- Context window: 128k tokens (code-optimized)
+- Recommended use-cases: code generation, bug fixing, algorithmic reasoning, unit-test synthesis
+
+### Example: Generate a Python function
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/responses \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"Daedalus-1-2B","input":"Write a Python function that reverses a linked list and includes type hints and unit tests."}'
+```
+
+## Daedalus-1 8B
+
+- Model ID: `Daedalus-1-8B`
+- Availability: Free (Beta)
+- Context window: 128k tokens (code-optimized)
+- Recommended use-cases: large-scale code synthesis, complex debugging, instruction-following on codebases
+
+### Example: Complex code transformation (Node)
+
+```js
+const res = await fetch('https://api.loom.aayanmishra.com/api/v1/responses', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${process.env.LOOM_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ model: 'Daedalus-1-8B', input: 'Refactor this legacy function to use async/await and add error handling: <paste code>' })
+})
+console.log(await res.json())
+```

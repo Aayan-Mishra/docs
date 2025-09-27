@@ -80,7 +80,7 @@ Adapters provide a thin, consistent interface to external model providers and ru
 - Pluggable caching and batching
 
 #### Supported adapters
-- **OpenAI**: GPT-3/4, Chat, Embeddings, streaming
+ - **OpenAI**: GPT-style providers (examples below use Loom AI API models by default)
 - **Hugging Face**: Transformers, LoRA, quantized models
 - **Vision**: CLIP, VLM, image classification
 - **Diffusion**: Stable Diffusion, image-to-image, text-to-image
@@ -90,15 +90,16 @@ Adapters provide a thin, consistent interface to external model providers and ru
 ```python
 from blocks.adapters.openai_adapter import OpenAIAdapter
 
+# Use Loom AI API models (Apollo family) in examples
 adapter = OpenAIAdapter(
-		api_key="YOUR_KEY",
-		model="gpt-4",
-		max_retries=5,
-		timeout=30,
-		enable_streaming=True
+    api_key="YOUR_KEY",
+    model="Apollo-1-4B",
+    max_retries=5,
+    timeout=30,
+    enable_streaming=True
 )
 async for chunk in adapter.stream_complete(prompt="Write a poem about LoomOS"):
-		print(chunk.text, end="")
+    print(chunk.text, end="")
 ```
 
 #### Example: Hugging Face Adapter (advanced)
@@ -212,7 +213,8 @@ generated = await adapter.generate(input_text="Hello world", max_length=50)
 ```python
 from blocks.adapters.openai_adapter import OpenAIAdapter
 
-adapter = OpenAIAdapter(api_key="YOUR_KEY", model="gpt-4")
+# Default to Loom AI API high-capacity text model in examples
+adapter = OpenAIAdapter(api_key="YOUR_KEY", model="Apollo-1-4B")
 response = await adapter.complete(prompt="Explain quantum computing in simple terms:")
 print(response.text)
 ```
