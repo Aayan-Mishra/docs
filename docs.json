@@ -36,6 +36,17 @@
           "loomlabs/loomos/deployment-guide"
         ]
       }
+      ,
+      {
+        "group": "Loom API",
+        "pages": [
+          "loomlabs/loomapi/index",
+          "loomlabs/loomapi/authentication",
+          "loomlabs/loomapi/endpoints",
+          "loomlabs/loomapi/examples",
+          "loomlabs/loomapi/errors"
+        ]
+      }
     ],
     "global": {
       "anchors": [

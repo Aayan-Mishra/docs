@@ -1,0 +1,30 @@
+---
+title: "Authentication"
+description: "How to authenticate to Loom API using SSK/Bearer tokens."
+---
+
+# Authentication
+
+Loom API uses SSK-style bearer tokens compatible with OpenAI SDKs. Obtain a key from your Loom Labs account dashboard and pass it in the `Authorization` header:
+
+```http
+Authorization: Bearer <YOUR_SSK>
+```
+
+### Example: curl
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/completions \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","prompt":"Hello world"}'
+```
+
+### SDK compatibility notes
+- Use the same OpenAI-compatible client configuration and provide the Loom base URL if your SDK supports a `base_url` override.
+
+```python
+from openai import OpenAI
+client = OpenAI(api_key="$LOOM_API_KEY", base_url="https://api.loom.aayanmishra.com/api/v1")
+resp = client.responses.create(model="gpt-4o-mini", input="Hello")
+```

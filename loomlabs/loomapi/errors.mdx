@@ -1,0 +1,29 @@
+---
+title: "Rate limits & Errors"
+description: "Error shapes and rate limiting for Loom API."
+---
+
+# Rate limits & Errors
+
+Loom API returns OpenAI-like error objects, with a Loom-specific `code` and `request_id` field for tracing.
+
+```json
+{
+  "error": {
+    "message": "Rate limit exceeded",
+    "type": "rate_limit_error",
+    "code": "loom.rate_limit",
+    "request_id": "req_12345"
+  }
+}
+```
+
+### Rate limiting
+- Default rate limits: 60 requests per minute per key (varies by plan)
+- Burst allowance and retry-after headers will be present on 429 responses.
+
+### Best practices
+- Implement exponential backoff on 429 and 5xx codes
+- Include `X-Request-ID` in your requests if you need deterministic tracing
+
+<Note>Contact Loom Labs support with your `request_id` to expedite debugging.</Note>

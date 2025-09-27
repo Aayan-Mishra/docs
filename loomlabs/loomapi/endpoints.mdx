@@ -1,0 +1,35 @@
+---
+title: "Endpoints"
+description: "OpenAI-compatible endpoints implemented by Loom API."
+---
+
+# Endpoints
+
+Loom API mirrors the common OpenAI endpoints with the following notable routes:
+
+- `/completions` — legacy completions endpoint (sync/async)
+- `/responses` — modern response-completions hybrid
+- `/chat/completions` — conversational/chat completions
+- `/embeddings` — embeddings
+- `/moderations` — content moderation
+
+### Example: chat completions (curl)
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/chat/completions \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","messages":[{"role":"user","content":"Summarize the following..."}]}'
+```
+
+### Example: embeddings
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/embeddings \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"text-embedding-3-small","input":"Hello world"}'
+```
+
+### HTTP semantics
+All endpoints follow standard OpenAI response shapes where possible. Rate limiting and errors follow OpenAI-like codes but include Loom-specific fields in the `error` object (see errors page).

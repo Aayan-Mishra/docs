@@ -1,0 +1,68 @@
+---
+title: "Models — Apollo"
+description: "Model cards and guidance for the Apollo family (Apollo-1 2B / 4B / 8B)."
+---
+
+# Apollo model family
+
+Loom Labs provides the Apollo family of models tuned for different latency, cost, and capability trade-offs. All models support a 128k token context window and are available in the Loom API as `Apollo-1-2B`, `Apollo-1-4B`, and `Apollo-1-8B`.
+
+<CardGroup columns={3}>
+  <Card title="Apollo-1 2B" subtitle="Model ID: Apollo-1-2B" description="Lightweight model for low-cost inference and simple tasks. 128k context." />
+  <Card title="Apollo-1 4B" subtitle="Model ID: Apollo-1-4B" description="Balanced model for production use-cases. 128k context." />
+  <Card title="Apollo-1 8B" subtitle="Model ID: Apollo-1-8B" description="High-capacity model for advanced tasks and deep reasoning. 128k context." />
+</CardGroup>
+
+## Apollo-1 2B
+
+- Model ID: `Apollo-1-2B`
+- Availability: Free (Beta)
+- Context window: 128k tokens
+- Recommended use-cases: classification, short summaries, simple chatbots, low-cost inference
+
+### Example
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/responses \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"Apollo-1-2B","input":"Classify the sentiment: I love this product"}'
+```
+
+## Apollo-1 4B
+
+- Model ID: `Apollo-1-4B`
+- Availability: Free (Beta)
+- Context window: 128k tokens
+- Recommended use-cases: content generation, multi-turn dialogue, question answering
+
+### Example
+
+```python
+import requests, os
+BASE = "https://api.loom.aayanmishra.com/api/v1"
+KEY = os.environ['LOOM_API_KEY']
+resp = requests.post(f"{BASE}/chat/completions", headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}, json={"model":"Apollo-1-4B","messages":[{"role":"user","content":"Explain quantum entanglement in simple terms."}]})
+print(resp.json())
+```
+
+## Apollo-1 8B
+
+- Model ID: `Apollo-1-8B`
+- Availability: Free (Beta)
+- Context window: 128k tokens
+- Recommended use-cases: advanced content generation, deep reasoning, long-form analysis
+
+### Example
+
+```js
+// Node example
+const res = await fetch('https://api.loom.aayanmishra.com/api/v1/responses', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${process.env.LOOM_API_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ model: 'Apollo-1-8B', input: 'Analyze the following dataset...' })
+})
+console.log(await res.json())
+```
+
+<Note>All Apollo models currently return OpenAI-like shapes and are compatible with common SDKs. Choose a model based on your latency/cost tradeoffs.</Note>

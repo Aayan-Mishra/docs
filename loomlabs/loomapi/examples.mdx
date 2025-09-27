@@ -1,0 +1,49 @@
+---
+title: "Examples"
+description: "Quick examples for using Loom API with curl, Python, and Node." 
+---
+
+# Examples
+
+### Python (requests)
+
+```python
+import os
+import requests
+
+BASE = "https://api.loom.aayanmishra.com/api/v1"
+KEY = os.environ["LOOM_API_KEY"]
+
+resp = requests.post(
+    f"{BASE}/chat/completions",
+    headers={"Authorization": f"Bearer {KEY}", "Content-Type": "application/json"},
+    json={"model": "gpt-4o-mini", "messages": [{"role":"user","content":"Write a haiku about compilers."}]}
+)
+print(resp.json())
+```
+
+### Node (fetch)
+
+```js
+const fetch = require('node-fetch')
+const KEY = process.env.LOOM_API_KEY
+
+const res = await fetch('https://api.loom.aayanmishra.com/api/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: 'Hello' }] })
+})
+const data = await res.json()
+console.log(data)
+```
+
+### Curl (quick)
+
+```bash
+curl https://api.loom.aayanmishra.com/api/v1/responses \
+  -H "Authorization: Bearer $LOOM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-4o-mini","input":"Hello"}'
+```
+
+<Check>If you use OpenAI SDKs that accept a `base_url` override, set it to `https://api.loom.aayanmishra.com/api/v1`.</Check>
