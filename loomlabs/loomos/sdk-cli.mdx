@@ -1,0 +1,161 @@
+---
+title: "SDK & CLI"
+description: "Python SDK, Job Manifests, and LoomOS CLI usage."
+---
+
+## SDK & CLI
+
+
+LoomOS provides an all-in-one (AIO) package that includes both the Python SDK and CLI. There is no separate package for the CLI or SDK—they are bundled together and installable only via GitHub.
+
+### Installation (AIO, GitHub only)
+
+<CodeGroup>
+```bash
+# Install the latest LoomOS SDK & CLI from GitHub
+pip install git+https://github.com/loomlabs/loomos.git
+```
+</CodeGroup>
+
+This will install both the `loomos` CLI and the Python SDK modules in one step.
+
+### Authentication & Configuration
+
+<CodeGroup>
+```bash
+# Authenticate CLI (example)
+loomos auth login --endpoint https://localhost:8443
+loomos auth set-token YOUR_TOKEN
+```
+</CodeGroup>
+
+You must set the endpoint to your own LoomOS instance (e.g., `https://localhost:8443` or your server's address). No external endpoints are provided by Loom Labs.
+
+```bash
+export LOOMOS_API_ENDPOINT=https://localhost:8443
+```
+
+### CLI Usage Examples
+
+<CodeGroup>
+```bash
+# List jobs
+loomos jobs list --endpoint https://localhost:8443
+
+# Submit a job from manifest
+loomos jobs submit --manifest job.yaml --endpoint https://localhost:8443
+
+# Get cluster status
+loomos cluster status --endpoint https://localhost:8443
+```
+</CodeGroup>
+
+### Python SDK Usage Examples
+
+<CodeGroup>
+```python
+from loomos import LoomOSClient, JobSpec, ResourceRequirements
+
+# Set endpoint to your own LoomOS instance (e.g., localhost or your server)
+client = LoomOSClient(endpoint="https://localhost:8443", auth_token="TOKEN")
+job_spec = JobSpec(
+	name="my_training_job",
+	algorithm="weave",
+	resources=ResourceRequirements(gpu_count=4, memory_gb=64)
+)
+
+job = await client.submit_job(job_spec)
+print(job.job_id)
+```
+</CodeGroup>
+
+### Manifest templates & validation
+
+Use manifest templates for reproducible experiments and batch jobs. Validate manifests locally before submission.
+
+#### Example: Job manifest (Python)
+
+<CodeGroup>
+```python
+from loomos.job_manifest import JobManifest, ManifestValidator
+
+manifest = JobManifest.from_dict({
+	"apiVersion": "loomos.ai/v1",
+	"kind": "TrainingJob",
+	"metadata": {"name": "gpt-fine-tuning"},
+	"spec": {"algorithm": "ppo", "environment": "language"}
+})
+
+validator = ManifestValidator()
+result = validator.validate(manifest)
+```
+</CodeGroup>
+
+### Troubleshooting & Tips
+- If the CLI is not found after install, ensure your Python environment's `bin` directory is in your PATH.
+- For authentication errors, check your token and endpoint URL.
+- For import errors, ensure you installed from GitHub and not PyPI.
+- Use `loomos --help` and `loomos <command> --help` for full CLI documentation.
+- For advanced usage, see the [API Reference](/loomlabs/loomos/api-reference) and [Nexus System](/loomlabs/loomos/nexus-system) docs.
+
+<CodeGroup>
+```bash
+pip install loomos-sdk
+pip install loomos-cli
+```
+</CodeGroup>
+
+### Job Manifest
+
+Declarative job specs with validation and templating.
+
+### Installation & authentication
+
+```bash
+# Install from PyPI
+pip install loomos-sdk loomos-cli
+
+# Authenticate CLI (example)
+loomos auth login --endpoint https://your-cluster.loomos.com
+loomos auth set-token YOUR_TOKEN
+```
+
+### Python client examples
+
+<CodeGroup>
+```python
+from loomos_sdk import LoomOSClient, JobSpec, ResourceRequirements
+
+client = LoomOSClient(endpoint="https://your-cluster.loomos.com", auth_token="TOKEN")
+job_spec = JobSpec(
+	name="my_training_job",
+	algorithm="weave",
+	resources=ResourceRequirements(gpu_count=4, memory_gb=64)
+)
+
+job = await client.submit_job(job_spec)
+print(job.job_id)
+```
+</CodeGroup>
+
+### Manifest templates & validation
+
+Use manifest templates for reproducible experiments and batch jobs. Validate manifests locally before submission.
+
+#### Example: Job manifest (Python)
+
+<CodeGroup>
+```python
+from loomos_sdk.job_manifest import JobManifest
+
+manifest = JobManifest.from_dict({
+	"apiVersion": "loomos.ai/v1",
+	"kind": "TrainingJob",
+	"metadata": {"name": "gpt-fine-tuning"},
+	"spec": {"algorithm": "ppo", "environment": "language"}
+})
+
+validator = ManifestValidator()
+result = validator.validate(manifest)
+```
+</CodeGroup>

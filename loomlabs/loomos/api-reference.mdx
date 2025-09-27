@@ -1,0 +1,81 @@
+---
+title: "API Reference"
+description: "Core REST endpoints and Python client classes."
+---
+
+## API Reference
+
+### Cluster Management
+
+GET /api/v1/cluster/status
+GET /api/v1/cluster/metrics
+
+#### Endpoint Discovery
+
+To discover all available REST endpoints:
+
+#### User-Configurable Endpoints
+
+All LoomOS endpoints are user-configurable. You can set the API domain or endpoint URL in:
+- CLI: `loomos --endpoint https://your-domain.com`
+- SDK: `LoomOSClient(endpoint="https://your-domain.com", ...)`
+- Environment variable: `LOOMOS_API_ENDPOINT=https://your-domain.com`
+
+This allows you to point the CLI and SDK to any LoomOS cluster or custom domain you control.
+
+#### Extending the API
+
+You can add custom endpoints by registering new routes in a plugin module (see Nexus System docs for an example). After adding, restart the master node and document the new endpoint for your team.
+
+### Job Management
+
+GET /api/v1/jobs
+POST /api/v1/jobs
+GET /api/v1/jobs/{job_id}
+
+### Model Management
+
+GET /api/v1/models
+POST /api/v1/models
+
+#### Python client
+
+Documented classes: LoomDB, Scheduler, LoomRLGym, LoomCtlClient
+
+#### Example: submit job via Python client
+
+```python
+from loomos_sdk import LoomOSClient, JobSpec, ResourceRequirements
+
+client = LoomOSClient(endpoint="https://your-cluster.loomos.com", auth_token="TOKEN")
+job_spec = JobSpec(name="my_job", algorithm="weave", resources=ResourceRequirements(gpu_count=8))
+job = await client.submit_job(job_spec)
+```
+
+#### Endpoints — request/response examples
+
+<RequestExample>
+```bash cURL
+curl -X POST 'https://loomctl.example.com/api/v1/jobs' \
+	-H 'Content-Type: application/json' \
+	-d '{"name":"gpt_training","algorithm":"ppo","resources":{"gpu_count":4}}'
+```
+</RequestExample>
+
+<ResponseExample>
+```json Success
+{
+	"job_id": "job_12345",
+	"state": "accepted",
+	"submitted_at": "2025-09-26T12:00:00Z"
+}
+```
+</ResponseExample>
+
+### Error handling and status codes
+
+- 200 OK: successful request
+- 202 Accepted: job accepted for processing
+- 400 Bad Request: invalid manifest or parameters
+- 401 Unauthorized: invalid authentication
+- 500 Internal Server Error: server error (check logs)

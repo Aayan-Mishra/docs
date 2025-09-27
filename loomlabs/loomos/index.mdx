@@ -1,0 +1,82 @@
+---
+title: "LoomOS — Distributed AI Runtime"
+description: "LoomOS: distributed AI runtime, RL training, verification, and orchestration platform by Loom Labs."
+---
+
+<div align="center">
+
+![LoomOS](/images/hero-light.png)
+
+[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](https://github.com/loomos/loomos)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+</div>
+
+## Platform overview
+LoomOS provides enterprise-grade infrastructure for AI model deployment, training, verification, and continuous improvement at scale. Below you'll find focused documentation for each major area of the platform — start with the Platform Overview or jump directly to the SDK, API reference, or deployment guides.
+
+### Quick links
+
+<CardGroup cols={3}>
+<Card title="Platform Overview" href="/loomlabs/loomos/platform-overview">
+  Architecture, quickstart, and high-level features
+</Card>
+
+<Card title="Core Modules" href="/loomlabs/loomos/core-modules">
+  LoomDB, Scheduler, Security, Marketplace
+</Card>
+
+<Card title="Reinforcement Learning" href="/loomlabs/loomos/rl-system">
+  RL Gym, PPO, WEAVE, and distributed training patterns
+</Card>
+
+<Card title="Nexus System" href="/loomlabs/loomos/nexus-system">
+  Master/worker architecture, failover, LoomCtl
+</Card>
+
+<Card title="Blocks & Adapters" href="/loomlabs/loomos/blocks-adapters">
+  Adapters for OpenAI, Hugging Face, Vision, and Diffusion models
+</Card>
+
+<Card title="SDK & CLI" href="/loomlabs/loomos/sdk-cli">
+  Python SDK, job manifests, and CLI commands
+</Card>
+
+<Card title="Examples & Tutorials" href="/loomlabs/loomos/examples-tutorials">
+  Quick demos and full WEAVE examples
+</Card>
+
+<Card title="Advanced Features" href="/loomlabs/loomos/advanced-features">
+  Tapestry, Prism, Weaver, and container runtimes
+</Card>
+
+<Card title="API Reference" href="/loomlabs/loomos/api-reference">
+  REST endpoints and Python client docs
+</Card>
+
+<Card title="Deployment Guide" href="/loomlabs/loomos/deployment-guide">
+  Docker Compose, Kubernetes, and configuration
+</Card>
+</CardGroup>
+
+<Note>
+If you want any of these pages expanded into additional subpages (for example splitting 'Core Modules' into LoomDB, Scheduler, Security), tell me which one and I'll create them.
+</Note>
+
+### How to use these docs
+
+- Start with "Platform Overview" for architecture and quickstart
+- Read "Core Modules" to understand LoomDB, Scheduler, and Security
+- Use "SDK & CLI" for programmatic integration and job manifests
+- Visit "API Reference" for endpoint and client details
+
+### Verification checklist
+
+- Follow the quickstart to run the demo
+- Confirm LoomCtl responds: `GET /api/v1/cluster/status`
+- Run an example training job and verify events appear in LoomDB
+
+<Check>
+Verify success by completing the Quick Start and seeing example outputs in `examples/`.
+</Check>

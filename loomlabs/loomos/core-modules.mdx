@@ -1,0 +1,1425 @@
+---
+title: "Core Modules"
+description: "Comprehensive guide to LoomDB event sourcing, Scheduler orchestration, Security framework, and Marketplace cost optimization."
+---
+
+# LoomOS Core Modules
+
+The core modules of LoomOS provide the foundational infrastructure for distributed AI operations. This comprehensive guide covers the four primary core modules: LoomDB for event sourcing and audit, Scheduler for resource orchestration, Security for access control and compliance, and Marketplace for cost optimization.
+
+## LoomDB - Event Sourcing & Audit System
+
+LoomDB is a high-performance event sourcing system designed specifically for AI workload auditing, compliance, and operational intelligence. It provides immutable event storage, real-time streaming, and comprehensive audit trails for all system operations.
+
+### Architecture & Design Principles
+
+LoomDB follows an event sourcing architecture with the following key principles:
+
+- **Immutability**: All events are append-only and immutable once written
+- **Temporal Ordering**: Events maintain strict temporal ordering for causality
+- **Partitioning**: Horizontal partitioning for scale and performance
+- **Streaming**: Real-time event streaming for immediate processing
+- **Durability**: Multi-replica persistence with configurable consistency levels
+
+### Core Components
+
+#### Event Store
+
+The event store is the heart of LoomDB, providing:
+
+```python
+from core.loomdb import (
+    LoomDB, EventType, AuditContext, EventStore, 
+    PartitionStrategy, ConsistencyLevel, RetentionPolicy
+)
+
+# Configure event store with production settings
+event_store_config = {
+    "partition_strategy": PartitionStrategy.TIME_BASED,
+    "partition_size_hours": 24,
+    "replication_factor": 3,
+    "consistency_level": ConsistencyLevel.QUORUM,
+    "compression": "lz4",
+    "encryption_at_rest": True
+}
+
+# Initialize LoomDB with custom configuration
+db = LoomDB(
+    connection_string="postgresql://user:pass@localhost:5432/loomdb",
+    event_store_config=event_store_config,
+    retention_policy=RetentionPolicy(
+        default_retention_days=2555,  # 7 years
+        compliance_retention_days=3650,  # 10 years for regulated data
+        archive_after_days=365,
+        compress_after_days=90
+    )
+)
+
+await db.initialize()
+```
+
+#### Event Types & Schema
+
+LoomDB supports comprehensive event typing for AI workflows:
+
+```python
+from core.loomdb import EventType, EventSchema, SchemaVersion
+
+# Core AI lifecycle events
+class AIEventType(EventType):
+    # Data events
+    DATA_INGESTION_START = "data.ingestion.start"
+    DATA_INGESTION_COMPLETE = "data.ingestion.complete"
+    DATA_VALIDATION_START = "data.validation.start"
+    DATA_VALIDATION_COMPLETE = "data.validation.complete"
+    
+    # Training events
+    MODEL_TRAINING_START = "model.training.start"
+    MODEL_TRAINING_CHECKPOINT = "model.training.checkpoint"
+    MODEL_TRAINING_COMPLETE = "model.training.complete"
+    MODEL_TRAINING_FAILED = "model.training.failed"
+    
+    # Evaluation events
+    MODEL_EVALUATION_START = "model.evaluation.start"
+    MODEL_EVALUATION_COMPLETE = "model.evaluation.complete"
+    
+    # Deployment events
+    MODEL_DEPLOYMENT_START = "model.deployment.start"
+    MODEL_DEPLOYMENT_COMPLETE = "model.deployment.complete"
+    MODEL_INFERENCE_REQUEST = "model.inference.request"
+    
+    # Security events
+    ACCESS_GRANTED = "security.access.granted"
+    ACCESS_DENIED = "security.access.denied"
+    PRIVILEGE_ESCALATION = "security.privilege.escalation"
+    
+    # Compliance events
+    DATA_ACCESS_AUDIT = "compliance.data.access"
+    MODEL_LINEAGE_TRACE = "compliance.model.lineage"
+    RETENTION_POLICY_APPLIED = "compliance.retention.applied"
+
+# Define event schemas with validation
+training_start_schema = EventSchema(
+    version=SchemaVersion("1.2.0"),
+    required_fields=[
+        "model_name", "dataset_id", "hyperparameters", 
+        "hardware_config", "expected_duration_hours"
+    ],
+    optional_fields=[
+        "experiment_id", "parent_model_id", "tags", 
+        "compliance_flags", "cost_center"
+    ],
+    validation_rules={
+        "model_name": {"type": "string", "max_length": 256},
+        "dataset_id": {"type": "uuid"},
+        "hyperparameters": {"type": "object"},
+        "hardware_config": {
+            "type": "object",
+            "required": ["gpu_count", "node_count", "memory_gb"]
+        }
+    }
+)
+
+# Register schema
+await db.register_event_schema(
+    event_type=AIEventType.MODEL_TRAINING_START,
+    schema=training_start_schema
+)
+```
+
+#### Advanced Event Logging
+
+```python
+from core.loomdb import (
+    AuditContext, ComplianceLevel, EventBatch, 
+    EventMetadata, CostTracking, SecurityContext
+)
+
+# Create comprehensive audit context
+audit_context = AuditContext(
+    user_id="data_scientist_456",
+    session_id="sess_abc123",
+    request_id="req_xyz789",
+    source_ip="10.0.1.50",
+    user_agent="LoomOS-SDK/1.2.3",
+    compliance_level=ComplianceLevel.SOC2_TYPE2,
+    cost_center="ml_research_team",
+    project_id="healthcare_nlp_2024"
+)
+
+# Enhanced security context for sensitive operations
+security_context = SecurityContext(
+    authentication_method="oauth2_jwt",
+    authorization_roles=["data_scientist", "healthcare_team"],
+    access_level="confidential",
+    data_classification="phi",  # Protected Health Information
+    geographic_restriction="us_only"
+)
+
+# Comprehensive training start event
+training_start_data = {
+    "model_name": "healthcare_bert_v3",
+    "model_architecture": "transformer",
+    "dataset_id": "healthcare_corpus_2024",
+    "dataset_size_records": 2_500_000,
+    "dataset_size_gb": 47.3,
+    
+    "hyperparameters": {
+        "learning_rate": 2e-5,
+        "batch_size": 32,
+        "num_epochs": 10,
+        "warmup_steps": 1000,
+        "weight_decay": 0.01,
+        "optimizer": "adamw",
+        "scheduler": "cosine_with_restarts"
+    },
+    
+    "hardware_config": {
+        "node_count": 4,
+        "gpu_per_node": 8,
+        "gpu_type": "A100",
+        "total_gpu_memory_gb": 320,
+        "interconnect": "nvlink",
+        "storage_type": "nvme_ssd",
+        "estimated_cost_per_hour": 45.60
+    },
+    
+    "compliance_metadata": {
+        "data_retention_years": 10,
+        "phi_data_present": True,
+        "consent_forms_verified": True,
+        "irb_approval_number": "IRB-2024-001"
+    },
+    
+    "experiment_config": {
+        "experiment_id": "exp_healthcare_bert_v3_001",
+        "hypothesis": "Fine-tuning on healthcare data improves medical NER",
+        "success_criteria": "F1 score > 0.92 on held-out test set",
+        "expected_duration_hours": 16,
+        "checkpoint_frequency_minutes": 30
+    }
+}
+
+# Log event with full context
+await db.log_event(
+    event_type=AIEventType.MODEL_TRAINING_START,
+    data=training_start_data,
+    context=audit_context,
+    security_context=security_context,
+    metadata=EventMetadata(
+        correlation_id="train_healthcare_bert_v3",
+        causation_id="data_validation_complete_xyz",
+        tags=["healthcare", "nlp", "bert", "phi_data"],
+        priority="high",
+        retention_override_days=3650  # 10 years for healthcare data
+    )
+)
+```
+
+#### Batch Event Processing
+
+For high-throughput scenarios, LoomDB supports efficient batch processing:
+
+```python
+from core.loomdb import EventBatch, BatchConfig
+
+# Configure batch processing
+batch_config = BatchConfig(
+    max_batch_size=1000,
+    max_batch_wait_ms=5000,
+    compression_enabled=True,
+    duplicate_detection=True,
+    async_processing=True
+)
+
+# Create event batch
+batch = EventBatch(config=batch_config)
+
+# Add multiple events to batch
+for i in range(1000):
+    checkpoint_event = {
+        "epoch": i // 100,
+        "step": i,
+        "loss": 0.5 - (i * 0.0001),
+        "accuracy": 0.7 + (i * 0.0002),
+        "learning_rate": 2e-5 * (0.999 ** i),
+        "gpu_memory_used_gb": 28.4 + (i * 0.001),
+        "batch_processing_time_ms": 150 + (i % 50)
+    }
+    
+    await batch.add_event(
+        event_type=AIEventType.MODEL_TRAINING_CHECKPOINT,
+        data=checkpoint_event,
+        context=audit_context
+    )
+
+# Submit batch for processing
+batch_result = await db.submit_batch(batch)
+print(f"Processed {batch_result.events_processed} events in {batch_result.processing_time_ms}ms")
+```
+
+#### Event Querying & Analytics
+
+```python
+from core.loomdb import (
+    EventQuery, QueryFilter, TimeRange, AggregationType,
+    AnalyticsEngine, ComplianceQuery
+)
+
+# Complex event querying
+query = EventQuery(
+    event_types=[
+        AIEventType.MODEL_TRAINING_START,
+        AIEventType.MODEL_TRAINING_COMPLETE,
+        AIEventType.MODEL_TRAINING_FAILED
+    ],
+    time_range=TimeRange(
+        start=datetime(2024, 1, 1),
+        end=datetime(2024, 12, 31)
+    ),
+    filters=[
+        QueryFilter("tags", "contains", "healthcare"),
+        QueryFilter("data.hardware_config.gpu_count", ">=", 4),
+        QueryFilter("context.compliance_level", "=", ComplianceLevel.SOC2_TYPE2)
+    ],
+    order_by="timestamp",
+    limit=10000,
+    include_metadata=True
+)
+
+# Execute query
+results = await db.query_events(query)
+
+# Analytics on query results
+analytics = AnalyticsEngine(db)
+
+# Calculate training success rates
+success_rate_analysis = await analytics.calculate_metrics(
+    metric_type=AggregationType.SUCCESS_RATE,
+    group_by=["data.model_architecture", "data.dataset_id"],
+    time_granularity="monthly"
+)
+
+# Cost analysis
+cost_analysis = await analytics.calculate_cost_metrics(
+    group_by=["context.cost_center", "data.hardware_config.gpu_type"],
+    include_projections=True,
+    projection_months=6
+)
+
+# Compliance reporting
+compliance_query = ComplianceQuery(
+    compliance_level=ComplianceLevel.SOC2_TYPE2,
+    report_type="access_audit",
+    time_range=TimeRange.last_quarter(),
+    include_user_actions=True,
+    include_data_lineage=True
+)
+
+compliance_report = await db.generate_compliance_report(compliance_query)
+```
+
+#### Real-time Event Streaming
+
+```python
+from core.loomdb import EventStream, StreamConfig, EventFilter
+
+# Configure event streaming
+stream_config = StreamConfig(
+    buffer_size=10000,
+    batch_size=100,
+    flush_interval_ms=1000,
+    enable_checkpointing=True,
+    checkpoint_interval_ms=30000
+)
+
+# Create event stream with filters
+stream = EventStream(
+    config=stream_config,
+    filters=[
+        EventFilter(event_types=[AIEventType.MODEL_TRAINING_FAILED]),
+        EventFilter(tags__contains="production"),
+        EventFilter(priority="high")
+    ]
+)
+
+# Process events in real-time
+async for event_batch in stream.subscribe():
+    for event in event_batch:
+        if event.event_type == AIEventType.MODEL_TRAINING_FAILED:
+            # Trigger immediate alert for production failures
+            await alert_system.send_alert(
+                severity="critical",
+                message=f"Production model training failed: {event.data['model_name']}",
+                event_id=event.event_id,
+                correlation_id=event.metadata.correlation_id
+            )
+            
+            # Trigger automatic retry if configured
+            if event.data.get("auto_retry", False):
+                await scheduler.retry_job(event.data["job_id"])
+```
+
+## Scheduler - Distributed Job Orchestration
+
+The LoomOS Scheduler provides sophisticated distributed job orchestration with advanced resource management, intelligent placement, and automatic scaling capabilities.
+
+### Scheduler Architecture
+
+The scheduler operates as a distributed system with the following components:
+
+- **Master Scheduler**: Central coordination and decision making
+- **Worker Schedulers**: Local resource management and job execution
+- **Resource Manager**: Global resource tracking and allocation
+- **Policy Engine**: Pluggable scheduling policies and constraints
+- **Autoscaler**: Dynamic cluster scaling based on demand
+
+### Core Scheduling Concepts
+
+#### Job Specifications
+
+```python
+from core.scheduler import (
+    Scheduler, JobSpec, ResourceRequirements, JobDependency,
+    SchedulingPolicy, PlacementConstraint, RetryPolicy,
+    CheckpointConfig, MonitoringConfig
+)
+
+# Advanced job specification
+job_spec = JobSpec(
+    # Basic job information
+    name="large_language_model_training",
+    description="Training GPT-style model on proprietary dataset",
+    job_type="distributed_training",
+    algorithm="weave_distributed",
+    
+    # Container and execution configuration
+    container_image="loomos/pytorch-training:v2.1.0",
+    command=["python", "train_llm.py"],
+    args=["--config", "/workspace/config.yaml"],
+    working_directory="/workspace",
+    
+    # Resource requirements with topology awareness
+    resources=ResourceRequirements(
+        # Compute resources
+        cpu_cores=64,
+        memory_gb=512,
+        gpu_count=8,
+        gpu_type="H100",
+        gpu_memory_gb=80,
+        
+        # Storage requirements
+        local_storage_gb=2000,
+        shared_storage_gb=10000,
+        storage_type="nvme",
+        io_bandwidth_gbps=10,
+        
+        # Network requirements
+        network_bandwidth_gbps=100,
+        low_latency_required=True,
+        infiniband_required=True,
+        
+        # Topology constraints
+        numa_topology="interleaved",
+        cpu_affinity="performance",
+        gpu_topology="nvlink_connected"
+    ),
+    
+    # Scheduling and placement
+    scheduling_policy=SchedulingPolicy.GANG_SCHEDULING,
+    placement_constraints=[
+        PlacementConstraint.SAME_RACK,  # All nodes in same rack
+        PlacementConstraint.GPU_AFFINITY,  # Optimize GPU placement
+        PlacementConstraint.AVOID_PREEMPTION  # Avoid preemptible nodes
+    ],
+    
+    # Priority and preemption
+    priority=90,  # High priority (0-100 scale)
+    preemptible=False,
+    can_preempt_lower_priority=True,
+    
+    # Execution constraints
+    max_runtime_hours=168,  # 7 days maximum
+    timeout_behavior="checkpoint_and_terminate",
+    
+    # Retry and fault tolerance
+    retry_policy=RetryPolicy(
+        max_retries=3,
+        retry_delay_seconds=300,
+        exponential_backoff=True,
+        retry_on_node_failure=True,
+        retry_on_resource_exhaustion=False
+    ),
+    
+    # Dependencies and workflow
+    dependencies=[
+        JobDependency(
+            job_name="data_preprocessing_job",
+            dependency_type="completion",
+            timeout_hours=24
+        ),
+        JobDependency(
+            job_name="model_validation_job",
+            dependency_type="success",
+            artifacts_required=["validated_dataset.parquet"]
+        )
+    ],
+    
+    # Environment configuration
+    environment_variables={
+        "CUDA_VISIBLE_DEVICES": "0,1,2,3,4,5,6,7",
+        "NCCL_DEBUG": "INFO",
+        "NCCL_IB_DISABLE": "0",
+        "PYTORCH_CUDA_ALLOC_CONF": "max_split_size_mb:512",
+        "TRANSFORMERS_CACHE": "/workspace/cache",
+        "WANDB_PROJECT": "llm_training_2024"
+    },
+    
+    # Checkpoint configuration
+    checkpoint_config=CheckpointConfig(
+        enabled=True,
+        interval_minutes=30,
+        max_checkpoints=20,
+        storage_backend="s3://model-checkpoints/llm-training/",
+        async_upload=True,
+        compression_enabled=True,
+        encryption_enabled=True
+    ),
+    
+    # Monitoring and alerting
+    monitoring_config=MonitoringConfig(
+        metrics_collection_interval_seconds=30,
+        log_level="INFO",
+        custom_metrics=["gpu_utilization", "memory_usage", "loss_value"],
+        alert_thresholds={
+            "gpu_utilization_percent": {"min": 80, "max": 95},
+            "memory_usage_percent": {"max": 90},
+            "loss_divergence_threshold": 10.0
+        },
+        notification_channels=[
+            "slack://ml-team-alerts",
+            "email://ml-engineers@company.com",
+            "pagerduty://ml-oncall"
+        ]
+    ),
+    
+    # Tags and metadata
+    tags=["llm", "production", "high_priority", "multi_node"],
+    metadata={
+        "team": "ml_research",
+        "project": "next_gen_llm",
+        "cost_center": "research_and_development",
+        "compliance_level": "confidential"
+    }
+)
+```
+
+#### Advanced Resource Management
+
+```python
+from core.scheduler import (
+    ResourceManager, ResourcePool, ResourceAllocation,
+    ResourcePolicy, AutoScalingConfig, NodeSelector
+)
+
+# Configure resource manager
+resource_manager = ResourceManager()
+
+# Define resource pools for different workload types
+training_pool = ResourcePool(
+    name="gpu_training_pool",
+    node_selector=NodeSelector(
+        labels={"node-type": "gpu-training", "gpu-generation": "h100"},
+        taints_tolerated=["training-workload:NoSchedule"]
+    ),
+    resource_limits={
+        "cpu_cores": 1000,
+        "memory_gb": 8000,
+        "gpu_count": 64,
+        "storage_gb": 100000
+    },
+    resource_allocation_policy=ResourcePolicy.FAIR_SHARE,
+    overcommit_ratios={
+        "cpu": 1.5,  # Allow 50% CPU overcommit
+        "memory": 1.1,  # Allow 10% memory overcommit
+        "storage": 2.0  # Allow 100% storage overcommit
+    }
+)
+
+inference_pool = ResourcePool(
+    name="inference_pool", 
+    node_selector=NodeSelector(
+        labels={"node-type": "inference", "instance-type": "optimized"},
+        preferred_zones=["us-west-2a", "us-west-2b"]
+    ),
+    resource_limits={
+        "cpu_cores": 500,
+        "memory_gb": 2000,
+        "gpu_count": 32
+    },
+    autoscaling_config=AutoScalingConfig(
+        min_nodes=5,
+        max_nodes=50,
+        scale_up_threshold=0.8,
+        scale_down_threshold=0.3,
+        scale_up_delay_seconds=300,
+        scale_down_delay_seconds=900
+    )
+)
+
+# Register resource pools
+await resource_manager.register_pool(training_pool)
+await resource_manager.register_pool(inference_pool)
+```
+
+#### Intelligent Job Scheduling
+
+```python
+from core.scheduler import (
+    SchedulingAlgorithm, JobQueue, SchedulingDecision,
+    ResourceOptimizer, PlacementOptimizer
+)
+
+# Initialize scheduler with advanced algorithms
+scheduler = Scheduler(
+    scheduling_algorithm=SchedulingAlgorithm.MULTI_OBJECTIVE_OPTIMIZATION,
+    optimization_objectives=[
+        "minimize_makespan",      # Minimize total completion time
+        "maximize_utilization",   # Maximize resource utilization
+        "minimize_energy_cost",   # Optimize for energy efficiency
+        "respect_sla_deadlines"   # Meet SLA commitments
+    ],
+    scheduling_interval_seconds=30,
+    resource_manager=resource_manager
+)
+
+# Submit job with custom scheduling preferences
+scheduling_preferences = {
+    "preferred_nodes": ["gpu-node-001", "gpu-node-002"],
+    "avoid_nodes": ["gpu-node-maintenance-*"],
+    "locality_preference": "data_source_proximity",
+    "cost_optimization": "spot_instances_preferred",
+    "deadline": datetime.now() + timedelta(hours=48)
+}
+
+job_handle = await scheduler.submit_job(
+    job_spec=job_spec,
+    scheduling_preferences=scheduling_preferences,
+    dry_run=False  # Set to True for scheduling simulation
+)
+
+print(f"Job submitted with ID: {job_handle.job_id}")
+print(f"Estimated start time: {job_handle.estimated_start_time}")
+print(f"Estimated completion time: {job_handle.estimated_completion_time}")
+print(f"Estimated cost: ${job_handle.estimated_cost:.2f}")
+```
+
+#### Job Monitoring & Management
+
+```python
+from core.scheduler import JobMonitor, JobAction, JobPhase
+
+# Create job monitor for real-time updates
+monitor = JobMonitor(scheduler)
+
+# Stream job updates
+async for update in monitor.stream_job_updates(job_handle.job_id):
+    print(f"Job Phase: {update.phase}")
+    print(f"Progress: {update.progress_percent:.1f}%")
+    print(f"Resource Utilization: CPU {update.cpu_utilization:.1f}%, GPU {update.gpu_utilization:.1f}%")
+    print(f"Estimated Time Remaining: {update.eta}")
+    
+    # Handle different job phases
+    if update.phase == JobPhase.QUEUED:
+        print(f"Position in queue: {update.queue_position}")
+        
+    elif update.phase == JobPhase.RUNNING:
+        # Log detailed metrics
+        metrics = await monitor.get_detailed_metrics(job_handle.job_id)
+        await db.log_event(
+            event_type=AIEventType.MODEL_TRAINING_CHECKPOINT,
+            data={
+                "job_id": job_handle.job_id,
+                "metrics": metrics,
+                "timestamp": update.timestamp
+            },
+            context=audit_context
+        )
+        
+    elif update.phase == JobPhase.COMPLETED:
+        # Handle successful completion
+        results = await monitor.get_job_results(job_handle.job_id)
+        print(f"Job completed successfully: {results}")
+        
+        # Trigger post-processing workflow
+        await scheduler.submit_job(create_postprocessing_job(results))
+        
+    elif update.phase == JobPhase.FAILED:
+        # Handle job failure
+        failure_info = await monitor.get_failure_info(job_handle.job_id)
+        
+        # Automatic retry logic
+        if failure_info.retryable and job_handle.retry_count < 3:
+            print("Retrying failed job...")
+            retry_handle = await scheduler.retry_job(
+                job_handle.job_id,
+                retry_delay_seconds=600
+            )
+        else:
+            # Send failure notification
+            await alert_system.send_alert(
+                severity="high",
+                message=f"Job {job_handle.job_id} failed permanently",
+                details=failure_info
+            )
+
+# Job control operations
+async def manage_job_lifecycle():
+    # Pause job (for maintenance or resource reallocation)
+    await scheduler.pause_job(job_handle.job_id, reason="Scheduled maintenance")
+    
+    # Resume job
+    await scheduler.resume_job(job_handle.job_id)
+    
+    # Scale job resources dynamically
+    await scheduler.scale_job_resources(
+        job_handle.job_id,
+        new_resources=ResourceRequirements(
+            cpu_cores=128,  # Double CPU allocation
+            gpu_count=16    # Double GPU allocation
+        )
+    )
+    
+    # Create checkpoint
+    checkpoint_id = await scheduler.create_checkpoint(job_handle.job_id)
+    print(f"Checkpoint created: {checkpoint_id}")
+    
+    # Graceful job termination
+    await scheduler.terminate_job(
+        job_handle.job_id,
+        reason="User requested termination",
+        save_checkpoint=True,
+        cleanup_resources=True
+    )
+```
+
+## Security - Authentication, Authorization & Compliance
+
+The LoomOS Security module provides comprehensive security controls including authentication, authorization, encryption, and compliance management for enterprise AI workloads.
+
+### Authentication & Identity Management
+
+```python
+from core.security import (
+    AuthenticationManager, IdentityProvider, AuthConfig,
+    MultiFactor, CertificateManager, TokenManager
+)
+
+# Configure authentication with multiple providers
+auth_config = AuthConfig(
+    primary_provider=IdentityProvider.OAUTH2,
+    fallback_providers=[IdentityProvider.LDAP, IdentityProvider.LOCAL],
+    
+    # OAuth2 configuration
+    oauth2_config={
+        "issuer_url": "https://auth.company.com/realms/loomos",
+        "client_id": "loomos-platform",
+        "client_secret": "${OAUTH2_CLIENT_SECRET}",
+        "scopes": ["openid", "profile", "email", "groups"],
+        "token_validation": "jwks",
+        "token_refresh_enabled": True
+    },
+    
+    # Multi-factor authentication
+    mfa_config={
+        "enabled": True,
+        "required_for_admin": True,
+        "methods": ["totp", "webauthn", "sms"],
+        "grace_period_hours": 4
+    },
+    
+    # Session management
+    session_config={
+        "timeout_minutes": 480,  # 8 hours
+        "sliding_expiration": True,
+        "concurrent_sessions_limit": 3,
+        "secure_cookies": True
+    }
+)
+
+auth_manager = AuthenticationManager(config=auth_config)
+
+# Advanced authentication flow
+async def authenticate_user(credentials):
+    # Primary authentication
+    auth_result = await auth_manager.authenticate(credentials)
+    
+    if auth_result.requires_mfa:
+        # Multi-factor authentication challenge
+        mfa_challenge = await auth_manager.initiate_mfa(
+            user_id=auth_result.user_id,
+            method="totp"
+        )
+        
+        # Wait for MFA response
+        mfa_token = await get_mfa_token_from_user()
+        mfa_result = await auth_manager.verify_mfa(
+            challenge_id=mfa_challenge.challenge_id,
+            token=mfa_token
+        )
+        
+        if not mfa_result.success:
+            raise AuthenticationError("MFA verification failed")
+    
+    # Generate session token
+    session_token = await auth_manager.create_session(
+        user_id=auth_result.user_id,
+        roles=auth_result.roles,
+        permissions=auth_result.permissions,
+        metadata={
+            "login_time": datetime.utcnow(),
+            "ip_address": credentials.source_ip,
+            "user_agent": credentials.user_agent
+        }
+    )
+    
+    return session_token
+```
+
+### Role-Based Access Control (RBAC)
+
+```python
+from core.security import (
+    RBACManager, Role, Permission, PolicyEngine,
+    ResourceAccess, AccessDecision, AuditLogger
+)
+
+# Define comprehensive permission system
+class LoomOSPermissions:
+    # Job management permissions
+    JOBS_CREATE = Permission("jobs:create", "Create new training jobs")
+    JOBS_READ = Permission("jobs:read", "View job status and details")
+    JOBS_UPDATE = Permission("jobs:update", "Modify job parameters")
+    JOBS_DELETE = Permission("jobs:delete", "Cancel or delete jobs")
+    JOBS_ADMIN = Permission("jobs:admin", "Full job management access")
+    
+    # Model management permissions
+    MODELS_DEPLOY = Permission("models:deploy", "Deploy models to production")
+    MODELS_READ = Permission("models:read", "Access model artifacts")
+    MODELS_UPDATE = Permission("models:update", "Update model metadata")
+    MODELS_DELETE = Permission("models:delete", "Delete model artifacts")
+    
+    # Data access permissions
+    DATA_READ_PUBLIC = Permission("data:read:public", "Access public datasets")
+    DATA_READ_INTERNAL = Permission("data:read:internal", "Access internal datasets")
+    DATA_READ_CONFIDENTIAL = Permission("data:read:confidential", "Access confidential data")
+    DATA_WRITE = Permission("data:write", "Upload or modify datasets")
+    
+    # Cluster management permissions
+    CLUSTER_READ = Permission("cluster:read", "View cluster status")
+    CLUSTER_ADMIN = Permission("cluster:admin", "Administer cluster resources")
+    
+    # Security permissions
+    SECURITY_AUDIT = Permission("security:audit", "Access security logs")
+    SECURITY_ADMIN = Permission("security:admin", "Manage security policies")
+
+# Define roles with hierarchical permissions
+data_scientist_role = Role(
+    name="data_scientist",
+    description="Data scientists and ML researchers",
+    permissions=[
+        LoomOSPermissions.JOBS_CREATE,
+        LoomOSPermissions.JOBS_READ,
+        LoomOSPermissions.JOBS_UPDATE,
+        LoomOSPermissions.MODELS_READ,
+        LoomOSPermissions.DATA_READ_PUBLIC,
+        LoomOSPermissions.DATA_READ_INTERNAL,
+        LoomOSPermissions.CLUSTER_READ
+    ],
+    constraints={
+        "max_concurrent_jobs": 10,
+        "max_gpu_hours_per_month": 1000,
+        "allowed_datasets": ["public", "internal"],
+        "cost_limit_per_month": 5000
+    }
+)
+
+ml_engineer_role = Role(
+    name="ml_engineer",
+    description="ML engineers and platform users",
+    permissions=[
+        LoomOSPermissions.JOBS_CREATE,
+        LoomOSPermissions.JOBS_READ,
+        LoomOSPermissions.JOBS_UPDATE,
+        LoomOSPermissions.JOBS_DELETE,
+        LoomOSPermissions.MODELS_DEPLOY,
+        LoomOSPermissions.MODELS_READ,
+        LoomOSPermissions.MODELS_UPDATE,
+        LoomOSPermissions.DATA_READ_PUBLIC,
+        LoomOSPermissions.DATA_READ_INTERNAL,
+        LoomOSPermissions.DATA_WRITE,
+        LoomOSPermissions.CLUSTER_READ
+    ],
+    constraints={
+        "max_concurrent_jobs": 25,
+        "max_gpu_hours_per_month": 2500,
+        "allowed_environments": ["development", "staging", "production"]
+    }
+)
+
+platform_admin_role = Role(
+    name="platform_admin",
+    description="Platform administrators",
+    permissions="*",  # All permissions
+    constraints={}  # No constraints for admins
+)
+
+# Initialize RBAC system
+rbac = RBACManager()
+await rbac.register_roles([data_scientist_role, ml_engineer_role, platform_admin_role])
+
+# Advanced access control with context
+async def check_access(user_id: str, resource: str, action: str, context: dict = None):
+    """
+    Check if user has access to perform action on resource with given context
+    """
+    access_request = ResourceAccess(
+        user_id=user_id,
+        resource=resource,
+        action=action,
+        context=context or {}
+    )
+    
+    # Evaluate access decision
+    decision = await rbac.evaluate_access(access_request)
+    
+    # Log access attempt for audit
+    await audit_logger.log_access_attempt(
+        user_id=user_id,
+        resource=resource,
+        action=action,
+        decision=decision.allowed,
+        reason=decision.reason,
+        context=context
+    )
+    
+    if not decision.allowed:
+        raise AccessDeniedError(f"Access denied: {decision.reason}")
+    
+    return decision
+
+# Dynamic permission evaluation
+async def submit_job_with_rbac(user_id: str, job_spec: JobSpec):
+    # Check basic job creation permission
+    await check_access(user_id, "jobs", "create")
+    
+    # Check resource limits based on user role
+    user_roles = await rbac.get_user_roles(user_id)
+    resource_limits = await rbac.get_resource_limits(user_roles)
+    
+    # Validate job against user constraints
+    if job_spec.resources.gpu_count > resource_limits.max_gpus_per_job:
+        raise AccessDeniedError(f"GPU request exceeds limit: {resource_limits.max_gpus_per_job}")
+    
+    # Check cost limits
+    estimated_cost = await cost_calculator.estimate_job_cost(job_spec)
+    monthly_usage = await cost_tracker.get_monthly_usage(user_id)
+    
+    if monthly_usage + estimated_cost > resource_limits.monthly_cost_limit:
+        raise AccessDeniedError(f"Job would exceed monthly cost limit: ${resource_limits.monthly_cost_limit}")
+    
+    # Check data access permissions for datasets
+    for dataset in job_spec.datasets:
+        dataset_classification = await data_classifier.get_classification(dataset)
+        required_permission = f"data:read:{dataset_classification}"
+        
+        await check_access(
+            user_id=user_id,
+            resource=f"dataset:{dataset}",
+            action="read",
+            context={"classification": dataset_classification}
+        )
+    
+    # If all checks pass, submit the job
+    return await scheduler.submit_job(job_spec)
+```
+
+### Encryption & Data Protection
+
+```python
+from core.security import (
+    EncryptionManager, EncryptionConfig, KeyManager,
+    DataClassification, EncryptionAlgorithm
+)
+
+# Configure encryption for different data classifications
+encryption_config = EncryptionConfig(
+    # Encryption at rest
+    at_rest_config={
+        "algorithm": EncryptionAlgorithm.AES_256_GCM,
+        "key_rotation_days": 90,
+        "key_derivation": "pbkdf2",
+        "compression_before_encryption": True
+    },
+    
+    # Encryption in transit
+    in_transit_config={
+        "tls_version": "1.3",
+        "cipher_suites": ["TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256"],
+        "certificate_validation": "strict",
+        "hsts_enabled": True
+    },
+    
+    # Key management
+    key_management_config={
+        "key_store": "hsm",  # Hardware Security Module
+        "key_escrow_enabled": True,
+        "key_backup_enabled": True,
+        "master_key_rotation_days": 365
+    }
+)
+
+encryption_manager = EncryptionManager(config=encryption_config)
+
+# Data classification and encryption
+async def encrypt_sensitive_data(data: bytes, classification: DataClassification):
+    """Encrypt data based on its classification level"""
+    
+    if classification == DataClassification.PUBLIC:
+        # Public data - no encryption required
+        return data
+        
+    elif classification == DataClassification.INTERNAL:
+        # Internal data - standard encryption
+        encrypted_data = await encryption_manager.encrypt(
+            data=data,
+            algorithm=EncryptionAlgorithm.AES_256_GCM,
+            key_id="internal_data_key"
+        )
+        
+    elif classification == DataClassification.CONFIDENTIAL:
+        # Confidential data - enhanced encryption
+        encrypted_data = await encryption_manager.encrypt(
+            data=data,
+            algorithm=EncryptionAlgorithm.AES_256_GCM,
+            key_id="confidential_data_key",
+            additional_entropy=True
+        )
+        
+    elif classification == DataClassification.RESTRICTED:
+        # Restricted data - maximum security
+        encrypted_data = await encryption_manager.encrypt(
+            data=data,
+            algorithm=EncryptionAlgorithm.CHACHA20_POLY1305,
+            key_id="restricted_data_key",
+            additional_entropy=True,
+            require_hsm=True
+        )
+        
+    return encrypted_data
+
+# Secure model artifact storage
+async def store_model_securely(model_data: bytes, model_metadata: dict):
+    """Store model with appropriate encryption and access controls"""
+    
+    # Classify model based on training data
+    data_classification = await classify_model_data(model_metadata)
+    
+    # Encrypt model data
+    encrypted_model = await encrypt_sensitive_data(model_data, data_classification)
+    
+    # Generate secure model ID
+    model_id = await generate_secure_id()
+    
+    # Store with metadata
+    storage_metadata = {
+        **model_metadata,
+        "encryption_algorithm": "AES_256_GCM",
+        "data_classification": data_classification.value,
+        "storage_timestamp": datetime.utcnow().isoformat(),
+        "checksum": calculate_checksum(encrypted_model)
+    }
+    
+    # Store in secure backend
+    await secure_storage.store(
+        key=f"models/{model_id}",
+        data=encrypted_model,
+        metadata=storage_metadata,
+        access_policy=generate_access_policy(data_classification)
+    )
+    
+    return model_id
+```
+
+## Marketplace - Cost Optimization & Provider Management
+
+The LoomOS Marketplace provides intelligent cost optimization, provider comparison, and resource advisory services for AI workloads across different cloud providers and on-premises infrastructure.
+
+### Cost Analysis & Optimization
+
+```python
+from core.marketplace import (
+    CostOptimizer, CostAnalyzer, ProviderComparator,
+    PricingModel, ResourceAdvisor, CostForecast
+)
+
+# Initialize cost optimization system
+cost_optimizer = CostOptimizer()
+cost_analyzer = CostAnalyzer()
+
+# Analyze current spending patterns
+async def analyze_ai_workload_costs():
+    """Comprehensive cost analysis for AI workloads"""
+    
+    # Get historical cost data
+    cost_data = await cost_analyzer.get_historical_costs(
+        time_range=TimeRange.last_6_months(),
+        group_by=["provider", "instance_type", "workload_type", "team"],
+        include_projections=True
+    )
+    
+    # Identify cost optimization opportunities
+    optimization_opportunities = await cost_optimizer.identify_opportunities(cost_data)
+    
+    # Generate recommendations
+    recommendations = []
+    
+    for opportunity in optimization_opportunities:
+        if opportunity.type == "instance_right_sizing":
+            # Recommend optimal instance types
+            optimal_instances = await cost_optimizer.recommend_instance_types(
+                workload_profile=opportunity.workload_profile,
+                performance_requirements=opportunity.performance_requirements,
+                cost_optimization_target=0.3  # Target 30% cost reduction
+            )
+            
+            recommendations.append({
+                "type": "instance_optimization",
+                "current_cost": opportunity.current_monthly_cost,
+                "optimized_cost": sum(inst.monthly_cost for inst in optimal_instances),
+                "savings": opportunity.current_monthly_cost - sum(inst.monthly_cost for inst in optimal_instances),
+                "confidence": opportunity.confidence_score,
+                "recommendations": optimal_instances
+            })
+            
+        elif opportunity.type == "spot_instance_usage":
+            # Recommend spot instance adoption
+            spot_analysis = await cost_optimizer.analyze_spot_feasibility(
+                workload_type=opportunity.workload_type,
+                fault_tolerance=opportunity.fault_tolerance,
+                deadline_flexibility=opportunity.deadline_flexibility
+            )
+            
+            recommendations.append({
+                "type": "spot_instances",
+                "potential_savings": spot_analysis.potential_savings,
+                "interruption_risk": spot_analysis.interruption_risk,
+                "recommended_mix": spot_analysis.optimal_spot_ondemand_ratio
+            })
+    
+    return recommendations
+
+# Multi-provider cost comparison
+async def compare_providers_for_workload(job_spec: JobSpec):
+    """Compare costs across different cloud providers"""
+    
+    providers = ["aws", "gcp", "azure", "on_premises"]
+    comparisons = []
+    
+    for provider in providers:
+        provider_cost = await cost_analyzer.estimate_job_cost(
+            job_spec=job_spec,
+            provider=provider,
+            pricing_model=PricingModel.ON_DEMAND,
+            include_data_transfer=True,
+            include_storage_costs=True
+        )
+        
+        # Get spot pricing if applicable
+        if job_spec.fault_tolerant:
+            spot_cost = await cost_analyzer.estimate_job_cost(
+                job_spec=job_spec,
+                provider=provider,
+                pricing_model=PricingModel.SPOT,
+                interruption_handling=True
+            )
+            provider_cost.spot_alternative = spot_cost
+        
+        # Calculate total cost including data transfer
+        total_cost = provider_cost.compute_cost + provider_cost.storage_cost + provider_cost.network_cost
+        
+        comparisons.append({
+            "provider": provider,
+            "total_cost": total_cost,
+            "compute_cost": provider_cost.compute_cost,
+            "storage_cost": provider_cost.storage_cost,
+            "network_cost": provider_cost.network_cost,
+            "estimated_runtime": provider_cost.estimated_runtime_hours,
+            "performance_score": provider_cost.performance_score,
+            "availability_score": provider_cost.availability_score,
+            "spot_savings": provider_cost.spot_alternative.savings_percent if provider_cost.spot_alternative else 0
+        })
+    
+    # Rank providers by cost-effectiveness
+    ranked_providers = sorted(comparisons, key=lambda x: x["total_cost"] / x["performance_score"])
+    
+    return ranked_providers
+
+# Intelligent resource recommendations
+resource_advisor = ResourceAdvisor()
+
+async def get_resource_recommendations(workload_history: List[JobSpec]):
+    """Generate intelligent resource recommendations based on workload history"""
+    
+    # Analyze historical resource utilization
+    utilization_analysis = await resource_advisor.analyze_utilization_patterns(workload_history)
+    
+    # Identify common patterns
+    patterns = await resource_advisor.identify_workload_patterns(
+        workload_history,
+        clustering_algorithm="k_means",
+        pattern_types=["resource_usage", "temporal", "performance"]
+    )
+    
+    recommendations = []
+    
+    for pattern in patterns:
+        # Generate resource optimization recommendations
+        if pattern.type == "over_provisioning":
+            recommendations.append({
+                "type": "reduce_resources",
+                "resource_type": pattern.resource_type,
+                "current_allocation": pattern.current_allocation,
+                "recommended_allocation": pattern.optimal_allocation,
+                "confidence": pattern.confidence_score,
+                "estimated_savings": pattern.cost_savings_per_month
+            })
+            
+        elif pattern.type == "under_utilization":
+            recommendations.append({
+                "type": "consolidate_workloads",
+                "affected_jobs": pattern.job_ids,
+                "consolidation_strategy": pattern.recommended_strategy,
+                "resource_savings": pattern.resource_savings,
+                "performance_impact": pattern.performance_impact
+            })
+            
+        elif pattern.type == "peak_usage":
+            # Recommend auto-scaling configuration
+            scaling_config = await resource_advisor.generate_autoscaling_config(
+                workload_pattern=pattern,
+                target_utilization=0.8,
+                scale_up_aggressiveness="moderate"
+            )
+            
+            recommendations.append({
+                "type": "enable_autoscaling",
+                "scaling_config": scaling_config,
+                "estimated_savings": scaling_config.estimated_monthly_savings,
+                "performance_improvement": scaling_config.performance_benefit
+            })
+    
+    return recommendations
+
+# Cost forecasting and budgeting
+async def generate_cost_forecast(team_id: str, forecast_months: int = 12):
+    """Generate cost forecasts and budget recommendations"""
+    
+    # Get historical spending data
+    historical_data = await cost_analyzer.get_team_spending(
+        team_id=team_id,
+        time_range=TimeRange.last_12_months()
+    )
+    
+    # Analyze spending trends
+    trends = await cost_analyzer.analyze_spending_trends(
+        historical_data,
+        include_seasonality=True,
+        include_growth_patterns=True
+    )
+    
+    # Generate forecast
+    forecast = await CostForecast.generate(
+        historical_data=historical_data,
+        trends=trends,
+        forecast_horizon_months=forecast_months,
+        confidence_intervals=[0.8, 0.95],
+        include_scenario_analysis=True
+    )
+    
+    # Budget recommendations
+    budget_recommendations = await cost_optimizer.generate_budget_recommendations(
+        forecast=forecast,
+        cost_optimization_target=0.15,  # Target 15% cost reduction
+        growth_allowance=0.25  # Allow 25% growth
+    )
+    
+    return {
+        "forecast": forecast,
+        "budget_recommendations": budget_recommendations,
+        "optimization_opportunities": await cost_optimizer.identify_future_opportunities(forecast),
+        "risk_factors": forecast.risk_factors
+    }
+```
+
+### Provider Integration & Management
+
+```python
+from core.marketplace import (
+    ProviderManager, CloudProvider, ProviderConfig,
+    ResourceQuota, CostMonitor, ProviderHealthChecker
+)
+
+# Multi-cloud provider configuration
+provider_configs = {
+    "aws": ProviderConfig(
+        provider_type=CloudProvider.AWS,
+        credentials={
+            "access_key_id": "${AWS_ACCESS_KEY_ID}",
+            "secret_access_key": "${AWS_SECRET_ACCESS_KEY}",
+            "region": "us-west-2"
+        },
+        resource_quotas=ResourceQuota(
+            max_instances=100,
+            max_vcpus=1000,
+            max_gpus=50,
+            max_storage_tb=100
+        ),
+        cost_limits={
+            "daily_limit": 10000,
+            "monthly_limit": 250000,
+            "emergency_limit": 50000
+        }
+    ),
+    
+    "gcp": ProviderConfig(
+        provider_type=CloudProvider.GCP,
+        credentials={
+            "service_account_key": "${GCP_SERVICE_ACCOUNT_KEY}",
+            "project_id": "ai-workloads-prod",
+            "region": "us-central1"
+        },
+        resource_quotas=ResourceQuota(
+            max_instances=75,
+            max_vcpus=750,
+            max_gpus=40,
+            max_storage_tb=75
+        )
+    ),
+    
+    "azure": ProviderConfig(
+        provider_type=CloudProvider.AZURE,
+        credentials={
+            "tenant_id": "${AZURE_TENANT_ID}",
+            "client_id": "${AZURE_CLIENT_ID}",
+            "client_secret": "${AZURE_CLIENT_SECRET}",
+            "subscription_id": "${AZURE_SUBSCRIPTION_ID}"
+        },
+        resource_quotas=ResourceQuota(
+            max_instances=60,
+            max_vcpus=600,
+            max_gpus=30,
+            max_storage_tb=60
+        )
+    )
+}
+
+# Initialize provider manager
+provider_manager = ProviderManager()
+
+for provider_name, config in provider_configs.items():
+    await provider_manager.register_provider(provider_name, config)
+
+# Intelligent provider selection
+async def select_optimal_provider(job_spec: JobSpec, constraints: dict = None):
+    """Select optimal provider based on job requirements and constraints"""
+    
+    # Get available providers
+    available_providers = await provider_manager.get_available_providers()
+    
+    # Filter providers based on constraints
+    if constraints:
+        available_providers = await provider_manager.filter_providers(
+            providers=available_providers,
+            constraints=constraints
+        )
+    
+    provider_scores = []
+    
+    for provider in available_providers:
+        # Calculate provider score based on multiple factors
+        cost_score = await cost_analyzer.calculate_cost_score(job_spec, provider)
+        performance_score = await provider_manager.get_performance_score(provider, job_spec)
+        availability_score = await provider_manager.get_availability_score(provider)
+        
+        # Weighted composite score
+        composite_score = (
+            cost_score * 0.4 +           # 40% weight on cost
+            performance_score * 0.3 +    # 30% weight on performance  
+            availability_score * 0.3     # 30% weight on availability
+        )
+        
+        provider_scores.append({
+            "provider": provider,
+            "composite_score": composite_score,
+            "cost_score": cost_score,
+            "performance_score": performance_score,
+            "availability_score": availability_score,
+            "estimated_cost": await cost_analyzer.estimate_job_cost(job_spec, provider),
+            "estimated_completion_time": await provider_manager.estimate_completion_time(job_spec, provider)
+        })
+    
+    # Return ranked providers
+    return sorted(provider_scores, key=lambda x: x["composite_score"], reverse=True)
+```
+
+## Advanced Core Module Features
+
+### Inter-module Communication & Orchestration
+
+```python
+from core.orchestration import ModuleOrchestrator, EventBus, MessageRouter
+
+# Initialize module orchestration
+orchestrator = ModuleOrchestrator()
+event_bus = EventBus()
+
+# Register core modules
+await orchestrator.register_module("loomdb", db)
+await orchestrator.register_module("scheduler", scheduler)
+await orchestrator.register_module("security", rbac)
+await orchestrator.register_module("marketplace", cost_optimizer)
+
+# Set up event-driven communication
+@event_bus.subscribe("job.submitted")
+async def on_job_submitted(event):
+    # Log job submission to LoomDB
+    await db.log_event(
+        event_type=AIEventType.JOB_SUBMITTED,
+        data=event.data,
+        context=event.context
+    )
+    
+    # Update cost tracking
+    await cost_optimizer.track_job_cost(event.data["job_id"])
+    
+    # Check security policies
+    await rbac.validate_job_security(event.data["job_spec"])
+
+@event_bus.subscribe("job.completed")
+async def on_job_completed(event):
+    # Log completion
+    await db.log_event(
+        event_type=AIEventType.JOB_COMPLETED,
+        data=event.data,
+        context=event.context
+    )
+    
+    # Calculate final costs
+    final_cost = await cost_optimizer.calculate_final_job_cost(event.data["job_id"])
+    
+    # Update usage quotas
+    await rbac.update_usage_quotas(event.context.user_id, final_cost)
+```
+
+This comprehensive documentation provides detailed coverage of all four core modules with extensive code examples, configuration options, and operational guidance. Each module is documented with production-ready examples and real-world usage patterns.

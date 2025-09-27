@@ -1,0 +1,208 @@
+---
+title: "Deployment Guide"
+description: "Local development, Docker Compose, and Kubernetes deployment guides."
+---
+
+## Deployment Guide
+
+### Local Development
+
+
+#### Step-by-step local setup
+```bash
+git clone https://github.com/loomlabs/loomos.git
+cd loomos
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+pytest
+```
+
+#### Local cluster demo
+```bash
+docker-compose up -d
+python examples/quick_demo.py
+```
+
+### Production
+
+- Docker Compose production manifest
+- Kubernetes manifests and scaling guidance
+
+### Production checklist
+
+
+### Example: Docker Compose (production)
+
+Below is a minimal production-ready Docker Compose file. Adjust resource limits, secrets, and storage for your environment.
+
+```yaml
+version: '3.8'
+services:
+	master:
+		image: loomos/master:latest
+		environment:
+			- LOOMOS_DB_URL=postgresql://user:pass@db:5432/loomos
+			- LOOMOS_REDIS_URL=redis://redis:6379/0
+			- LOOMOS_SECRET_KEY=supersecret
+		ports:
+			- "8080:8080"
+		depends_on:
+			- db
+			- redis
+		deploy:
+			resources:
+				limits:
+					cpus: '2'
+					memory: 4G
+	worker:
+		image: loomos/worker:latest
+		environment:
+			- LOOMOS_DB_URL=postgresql://user:pass@db:5432/loomos
+			- LOOMOS_REDIS_URL=redis://redis:6379/0
+			- LOOMOS_SECRET_KEY=supersecret
+		deploy:
+			resources:
+				limits:
+					cpus: '4'
+					memory: 8G
+		deploy:
+			replicas: 4
+	db:
+		image: postgres:15
+		environment:
+			POSTGRES_USER: user
+			POSTGRES_PASSWORD: pass
+			POSTGRES_DB: loomos
+		volumes:
+			- db_data:/var/lib/postgresql/data
+	redis:
+		image: redis:7
+		volumes:
+			- redis_data:/data
+volumes:
+	db_data:
+	redis_data:
+```
+
+### Advanced Kubernetes deployment
+For high-availability and scalability, use Kubernetes. Example manifests:
+
+**Master Deployment:**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+	name: loomos-master
+spec:
+	replicas: 3
+	selector:
+		matchLabels:
+			app: loomos-master
+	template:
+		metadata:
+			labels:
+				app: loomos-master
+		spec:
+			containers:
+			- name: master
+				image: loomos/master:latest
+				resources:
+					requests:
+						cpu: "1000m"
+						memory: "4Gi"
+				envFrom:
+				- secretRef:
+						name: loomos-secrets
+				ports:
+				- containerPort: 8080
+```
+
+**Worker DaemonSet:**
+```yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+	name: loomos-worker
+spec:
+	selector:
+		matchLabels:
+			app: loomos-worker
+	template:
+		metadata:
+			labels:
+				app: loomos-worker
+		spec:
+			containers:
+			- name: worker
+				image: loomos/worker:latest
+				resources:
+					requests:
+						cpu: "4000m"
+						memory: "8Gi"
+						nvidia.com/gpu: 1
+				envFrom:
+				- secretRef:
+						name: loomos-secrets
+```
+
+**Secrets and Config:**
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+	name: loomos-secrets
+type: Opaque
+stringData:
+	LOOMOS_DB_URL: postgresql://user:pass@db:5432/loomos
+	LOOMOS_REDIS_URL: redis://redis:6379/0
+	LOOMOS_SECRET_KEY: supersecret
+```
+
+**Monitoring and scaling:**
+- Use Prometheus and Grafana for metrics. Scrape `/metrics` endpoint.
+- Use Jaeger for distributed tracing. Export traces from all services.
+- Use HorizontalPodAutoscaler (HPA) for worker pools:
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+	name: loomos-worker-hpa
+spec:
+	scaleTargetRef:
+		apiVersion: apps/v1
+		kind: DaemonSet
+		name: loomos-worker
+	minReplicas: 2
+	maxReplicas: 20
+	metrics:
+	- type: Resource
+		resource:
+			name: cpu
+			target:
+				type: Utilization
+				averageUtilization: 70
+```
+
+### Advanced Troubleshooting
+- Check container logs for errors on startup and shutdown.
+- Use `kubectl describe` and `kubectl logs` for debugging pods.
+- Validate DB and Redis connectivity from within pods.
+- Use `loomos jobs list` and `/metrics` endpoints to monitor job and cluster health.
+- Confirm all services are healthy via `/healthz` endpoints.
+- Enable debug logging for more verbose output.
+- Set up alerting for job failures, resource exhaustion, and unhealthy nodes.
+
+### Best Practices & Security
+- Always use TLS for all endpoints in production.
+- Store secrets in Kubernetes secrets or a vault, never in plain text.
+- Use resource limits and requests for all containers.
+- Enable audit logging and event tracing for compliance.
+- Regularly back up Postgres and Redis data volumes.
+- Use S3-compatible storage for model artifacts and logs.
+- Test failover and recovery procedures regularly.
+See `docker-compose.prod.yml` in the repository for a full production example.
+
+### Configuration
+
+Environment variables and monitoring endpoints

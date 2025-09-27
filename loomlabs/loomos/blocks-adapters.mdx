@@ -1,0 +1,231 @@
+---
+title: "Blocks & Adapters"
+description: "Block registry, adapters for OpenAI, Hugging Face, Vision, Diffusion, and integrations."
+---
+
+## Blocks & Adapters
+
+Modular components (blocks) and adapters make LoomOS extensible for different model backends.
+
+<Note>
+Blocks are the building blocks of LoomOS extensibility. Adapters allow seamless integration with external model providers, custom runtimes, and new modalities. This page covers advanced usage, registry best practices, and troubleshooting.
+</Note>
+
+### Block Registry
+
+Register, load, and benchmark model blocks.
+
+#### What is a Block?
+A block is a reusable, versioned component: model, tokenizer, pre/postprocessor, or pipeline. Blocks are registered in the Block Registry with full metadata, compatibility checks, and version constraints.
+
+**Block metadata fields:**
+- name, version, author, description
+- entry point (Python import path)
+- requirements (PyPI dependencies, CUDA, etc.)
+- supported input/output types
+- tags (e.g. "vision", "text", "diffusion")
+
+#### Registering and loading blocks
+Blocks can be registered programmatically or via manifest files. Example:
+
+```python
+from blocks.registry import BlockRegistry, BlockSpec
+
+registry = BlockRegistry()
+spec = BlockSpec(
+		name="custom_transformer",
+		version="1.0.0",
+		entry_point="custom_transformer.model:CustomTransformer",
+		requirements=["torch>=2.0.0", "transformers>=4.30.0"],
+		tags=["text", "transformer"]
+)
+await registry.register_block(spec)
+
+# Load a block by name/version
+block = await registry.load_block("custom_transformer", version="1.0.0")
+```
+
+#### Block manifest example
+```yaml
+name: stable_diffusion
+version: 2.1.0
+entry_point: sd.model:StableDiffusion
+requirements:
+	- torch>=2.0.0
+	- diffusers>=0.18.0
+tags:
+	- diffusion
+	- vision
+```
+
+#### Benchmarking and compatibility
+Blocks can be benchmarked for latency, throughput, and memory usage. The registry tracks compatibility with adapters and runtime environments.
+
+**Best practices:**
+- Use semantic versioning for all blocks
+- Document input/output schemas
+- Tag blocks for discoverability
+
+### Adapters
+
+
+#### Adapter architecture
+Adapters provide a thin, consistent interface to external model providers and runtimes. They standardize authentication, rate-limiting, streaming, batching, and error handling.
+
+**Adapter features:**
+- Unified async API for all providers
+- Built-in retry and exponential backoff
+- Cost and latency instrumentation
+- Streaming and chunked response support
+- Pluggable caching and batching
+
+#### Supported adapters
+- **OpenAI**: GPT-3/4, Chat, Embeddings, streaming
+- **Hugging Face**: Transformers, LoRA, quantized models
+- **Vision**: CLIP, VLM, image classification
+- **Diffusion**: Stable Diffusion, image-to-image, text-to-image
+- **Custom**: Bring your own model with a Python entry point
+
+#### Example: OpenAI Adapter (advanced)
+```python
+from blocks.adapters.openai_adapter import OpenAIAdapter
+
+adapter = OpenAIAdapter(
+		api_key="YOUR_KEY",
+		model="gpt-4",
+		max_retries=5,
+		timeout=30,
+		enable_streaming=True
+)
+async for chunk in adapter.stream_complete(prompt="Write a poem about LoomOS"):
+		print(chunk.text, end="")
+```
+
+#### Example: Hugging Face Adapter (advanced)
+```python
+from blocks.adapters.hf_model_adapter import HuggingFaceAdapter
+
+adapter = HuggingFaceAdapter(
+		model_name="microsoft/DialoGPT-large",
+		device="cuda",
+		enable_lora=True,
+		cache_dir="/models/hf_cache"
+)
+await adapter.load_model()
+generated = await adapter.generate(input_text="Hello, how are you?", max_length=100)
+```
+
+#### Example: Vision Adapter
+```python
+from blocks.adapters.vision_adapter import VisionAdapter
+
+adapter = VisionAdapter(model_name="clip-vit-base-patch16", device="cuda")
+await adapter.load_model()
+result = await adapter.classify(image_path="cat.jpg")
+print(result)
+```
+
+#### Example: Diffusion Adapter
+```python
+from blocks.adapters.diffusion_adapter import DiffusionAdapter
+
+adapter = DiffusionAdapter(model_name="stable-diffusion-v1-4", device="cuda")
+await adapter.load_model()
+image = await adapter.text_to_image(prompt="A futuristic cityscape at sunset")
+image.save("output.png")
+```
+
+### Adapter troubleshooting
+- **Timeouts**: Increase `timeout` parameter or check network/firewall settings
+- **Authentication errors**: Verify API keys and permissions
+- **Model loading failures**: Check device availability and model weights
+- **High latency**: Enable caching, reduce batch size, or use quantized models
+- **Cost spikes**: Set usage limits and monitor with cost instrumentation
+
+### Best practices
+- Cache tokens and models to reduce latency and cost
+- Use adapter-level rate limiting and backoff strategies
+- Instrument adapters with cost metrics and usage tags
+- Document adapter configuration and expected outputs
+- Regularly update adapter dependencies for security and performance
+
+### Block Registry
+
+The Block Registry stores metadata about reusable components (blocks) such as models, tokenizers, preprocessors, and postprocessors. Blocks have:
+
+- name, version, author, entry point, requirements
+- compatibility checks and version constraints
+
+Registering a block
+
+<CodeGroup>
+```python
+from blocks.registry import BlockRegistry, BlockSpec
+
+registry = BlockRegistry()
+spec = BlockSpec(name="custom_transformer", version="1.0.0", entry_point="custom_transformer.model:CustomTransformer")
+await registry.register_block(spec)
+```
+</CodeGroup>
+
+### Adapter patterns
+
+Adapters provide a thin, consistent interface to external model providers and runtimes. They standardize authentication, rate-limiting, streaming, and batching.
+
+#### OpenAI Adapter
+
+Example usage
+
+<CodeGroup>
+```python
+from blocks.adapters.openai_adapter import OpenAIAdapter
+
+adapter = OpenAIAdapter(api_key="YOUR_API_KEY", model="gpt-4")
+response = await adapter.complete(prompt="Explain quantum computing in simple terms:")
+print(response.text)
+```
+</CodeGroup>
+
+#### Hugging Face Adapter
+
+Example usage
+
+<CodeGroup>
+```python
+from blocks.adapters.hf_model_adapter import HuggingFaceAdapter
+
+adapter = HuggingFaceAdapter(model_name="gpt2", device="cpu")
+await adapter.load_model()
+generated = await adapter.generate(input_text="Hello world", max_length=50)
+```
+</CodeGroup>
+
+### Best practices
+
+- Cache tokens and models to reduce latency and cost
+- Use adapter-level rate limiting and backoff strategies
+- Instrument adapters with cost metrics and usage tags
+
+#### Example: OpenAI Adapter usage
+
+<CodeGroup>
+```python
+from blocks.adapters.openai_adapter import OpenAIAdapter
+
+adapter = OpenAIAdapter(api_key="YOUR_KEY", model="gpt-4")
+response = await adapter.complete(prompt="Explain quantum computing in simple terms:")
+print(response.text)
+```
+</CodeGroup>
+
+#### Example: Hugging Face Adapter usage
+
+<CodeGroup>
+```python
+from blocks.adapters.hf_model_adapter import HuggingFaceAdapter
+
+adapter = HuggingFaceAdapter(model_name="microsoft/DialoGPT-large", device="cpu")
+await adapter.load_model()
+generated = await adapter.generate(input_text="Hello, how are you?", max_length=100)
+```
+</CodeGroup>

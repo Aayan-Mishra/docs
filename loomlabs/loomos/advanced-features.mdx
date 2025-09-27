@@ -1,0 +1,165 @@
+---
+title: "Advanced Features Appendix"
+description: "Expanded advanced features: Tapestry, Weaver, container runtime, troubleshooting."
+---
+
+#### Example: Multi-Stage Pipeline
+```python
+from core.tapestry import Pipeline, ModelStage
+
+pipeline = Pipeline([
+    ModelStage(model="gpt-4-base"),
+    ModelStage(model="prism-verifier", postprocess=True)
+])
+result = await pipeline.run(input_data)
+```
+
+#### Advanced Tapestry Usage
+Tapestry supports complex routing strategies, including conditional branching and dynamic model selection based on input characteristics.
+
+##### Conditional Routing Example
+```python
+from core.tapestry import ConditionalRouter, Pipeline
+
+router = ConditionalRouter(
+    condition=lambda input: len(input) > 1000,  # Route based on input length
+    true_branch=ModelStage(model="gpt-4-large"),
+    false_branch=ModelStage(model="gpt-4-base")
+)
+
+pipeline = Pipeline([router])
+result = await pipeline.run(input_data)
+```
+
+##### Performance Optimization
+- Use caching for frequently accessed models
+- Implement request batching for high-throughput scenarios
+- Monitor pipeline latency and optimize bottlenecks
+
+### Weaver — Distributed Orchestration
+
+Weaver is LoomOS's advanced orchestration engine for distributed training, hyperparameter search, and experiment management.
+
+#### Features
+- Distributed job graph execution
+- Hyperparameter sweeps and grid/random search
+- Fault-tolerant checkpointing and recovery
+- Integration with Scheduler and LoomDB
+
+#### Example: Hyperparameter Search
+```python
+from core.weaver import Weaver, SweepConfig
+
+sweep = SweepConfig(
+    param_grid={"learning_rate": [1e-4, 3e-4, 1e-3]},
+    max_trials=10
+)
+weaver = Weaver(sweep)
+results = await weaver.run(job_spec)
+print(results)
+```
+
+#### Advanced Weaver Configurations
+Weaver supports Bayesian optimization, early stopping, and multi-objective optimization for complex experiments.
+
+##### Bayesian Optimization Example
+```python
+from core.weaver import BayesianOptimizer
+
+optimizer = BayesianOptimizer(
+    search_space={
+        "learning_rate": {"type": "loguniform", "low": 1e-5, "high": 1e-2},
+        "batch_size": {"type": "categorical", "choices": [16, 32, 64]}
+    },
+    objective="validation_accuracy",
+    max_trials=50
+)
+
+weaver = Weaver(optimizer=optimizer)
+results = await weaver.optimize(job_spec)
+```
+
+##### Multi-Objective Optimization
+```python
+from core.weaver import MultiObjectiveOptimizer
+
+optimizer = MultiObjectiveOptimizer(
+    objectives=["accuracy", "latency", "memory_usage"],
+    weights=[0.5, 0.3, 0.2],
+    constraints={"latency": "< 100ms"}
+)
+
+weaver = Weaver(optimizer=optimizer)
+pareto_front = await weaver.optimize(job_spec)
+```
+
+#### Integration with LoomDB
+Weaver automatically logs all experiments, hyperparameters, and results to LoomDB for comprehensive tracking and analysis.
+
+### Container Runtime Extensions
+
+LoomOS supports custom container runtimes (Docker, WASM) for secure, reproducible execution.
+
+#### Best Practices
+- Use minimal, trusted base images
+- Pin all dependencies for reproducibility
+- Enable resource limits and security policies
+
+#### Docker Runtime Configuration
+```yaml
+# docker-compose.yml snippet
+services:
+  loomos-worker:
+    image: loomos/worker:latest
+    runtime: nvidia  # For GPU support
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+```
+
+#### WASM Runtime for Secure Execution
+LoomOS supports WebAssembly for sandboxed model execution, providing additional security layers.
+
+```python
+from core.runtime import WASMRuntime
+
+runtime = WASMRuntime(model_path="model.wasm")
+result = await runtime.execute(input_data)
+```
+
+#### Performance Tuning
+- Use multi-stage builds to minimize image size
+- Implement health checks and graceful shutdown
+- Monitor resource usage with Prometheus metrics
+
+### Troubleshooting Advanced Features
+- **Verification failures**: Check test suite config and model outputs
+- **Pipeline errors**: Validate all model stages and input/output schemas
+- **Orchestration issues**: Inspect job graph and scheduler logs
+- **Container runtime errors**: Check image compatibility and resource limits
+
+#### Detailed Troubleshooting Guide
+
+##### Prism Verification Issues
+- **False positives**: Adjust threshold values in test configurations
+- **Timeout errors**: Increase verification timeout or optimize test suite
+- **Integration failures**: Ensure Prism is properly initialized and connected to LoomDB
+
+##### Tapestry Pipeline Problems
+- **Routing failures**: Debug conditional logic and input validation
+- **Performance bottlenecks**: Profile each stage and optimize slow components
+- **State management**: Ensure proper cleanup between pipeline runs
+
+##### Weaver Orchestration Errors
+- **Job scheduling failures**: Check resource availability and constraints
+- **Checkpoint corruption**: Verify storage integrity and backup mechanisms
+- **Optimization convergence**: Adjust search spaces and objective functions
+
+##### Container Runtime Failures
+- **Image pull errors**: Verify registry access and image tags
+- **Resource exhaustion**: Monitor CPU, memory, and GPU usage
+- **Security violations**: Review security policies and capabilities

@@ -1,76 +1,39 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "name": "Artemis RL Gym Documentation",
+  "name": "Loom Labs Documentation",
   "theme": "maple",
   "logo": {
-    "dark": "/logo/dark.svg",
-    "light": "/logo/light.svg"
+    "dark": "/logo/loomlogo.svg",
+    "light": "/logo/loomlogo.svg"
   },
   "favicon": "/favicon.svg",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#4d2fe4",
+    "light": "#4d2fe4",
+    "dark": "#4d2fe4"
   },
   "navigation": {
     "groups": [
       {
-        "group": "Getting Started",
+        "group": "About",
         "pages": [
-          "artemis/introduction",
-          "artemis/quickstart"
+          "loomlabs/overview"
         ]
       },
       {
-        "group": "Core Components",
+        "group": "LoomOS",
         "pages": [
-          "artemis/core/overview",
-          "artemis/core/agents",
-          "artemis/core/environments"
-        ]
-      },
-      {
-        "group": "RL Algorithms",
-        "pages": [
-          "artemis/algorithms/overview",
-          "artemis/algorithms/prism"
-        ]
-      },
-      {
-        "group": "Performance & Optimization",
-        "pages": [
-          "artemis/performance/gpu-utilities",
-          "artemis/performance/monitoring"
-        ]
-      },
-      {
-        "group": "Distributed System",
-        "pages": [
-          "artemis/distributed/overview"
-        ]
-      },
-      {
-        "group": "Tutorials",
-        "pages": [
-          "artemis/tutorials/index",
-          "artemis/tutorials/prism-tutorial",
-          "artemis/tutorials/llama-finetuning-tutorial",
-          "artemis/tutorials/qwen3-4b-dpo",
-          "artemis/tutorials/ppo-tutorial",
-          "artemis/tutorials/grpo-tutorial",
-          "artemis/tutorials/distributed-training"
-        ]
-      },
-      {
-        "group": "Examples & Tutorials",
-        "pages": [
-          "artemis/examples/overview"
-        ]
-      },
-      {
-        "group": "API Reference",
-        "pages": [
-          "artemis/api-reference/introduction"
+          "loomlabs/loomos/index",
+          "loomlabs/loomos/platform-overview",
+          "loomlabs/loomos/core-modules",
+          "loomlabs/loomos/rl-system",
+          "loomlabs/loomos/nexus-system",
+          "loomlabs/loomos/blocks-adapters",
+          "loomlabs/loomos/sdk-cli",
+          "loomlabs/loomos/examples-tutorials",
+          "loomlabs/loomos/advanced-features",
+          "loomlabs/loomos/api-reference",
+          "loomlabs/loomos/deployment-guide"
         ]
       }
     ],
@@ -78,7 +41,7 @@
       "anchors": [
         {
           "anchor": "GitHub",
-          "href": "https://github.com/noema-research/artemis-rl-gym",
+          "href": "https://github.com/loomos/loomos",
           "icon": "github"
         }
       ]

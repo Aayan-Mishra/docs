@@ -1,111 +1,84 @@
 ---
-title: "Welcome to Artemis RL Gym"
-description: "Production-ready distributed reinforcement learning framework for Large Language Models"
+title: "Loom Labs"
+description: "Official documentation for Loom Labs — distributed AI infrastructure, LoomOS, SDKs, and verification."
 ---
 
 <div align="center">
 
-![Artemis RL Gym](/images/artemis-logo.png)
-
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-**A Production-Ready Distributed Reinforcement Learning Framework for Large Language Models**
-
-[Get Started](/artemis/quickstart)
-[View on GitHub](https://github.com/noema-research/artemis-rl-gym)
-
+![Loom Labs](/images/hero-light.png)
 </div>
 
-## What is Artemis RL Gym?
+Loom Labs builds open, enterprise-grade infrastructure for distributed AI. Our mission is to make large-scale, verifiable AI reliable and easy to operate in production.
 
-Artemis RL Gym is an enterprise-grade reinforcement learning framework specifically designed for training Large Language Models (LLMs) at scale. Built from the ground up for production environments, it combines cutting-edge RL algorithms with distributed computing capabilities to deliver unparalleled performance and reliability.
+## What is Loom Labs?
 
-## Key Features
+Loom Labs is the company behind LoomOS — a distributed AI runtime and orchestration platform for training, verifying, and deploying AI models at scale. We provide:
+
+- **LoomOS**: Distributed AI runtime, scheduler, RL stack, verification, and deployment
+- **Prism**: Integrated safety, factuality, and compliance verification
+- **SDKs & CLI**: Python SDK, job manifest system, and CLI tools
+- **Marketplace**: Compute advisory and cost-optimization tooling
+
+## Products
 
 <CardGroup cols={2}>
-<Card title="🚀 Production-Ready" href="/artemis/introduction">
-  Built for enterprise deployments with comprehensive monitoring and fault tolerance
+<Card title="LoomOS (Product)" icon="rocket" href="/loomlabs/loomos/index">
+  LoomOS — distributed AI runtime and orchestration platform: scheduler, LoomDB, RL training, verification, and deployment.
 </Card>
 
-<Card title="💰 Zero-Cost Scaling" href="/artemis/distributed/overview">
-  In-memory message broker eliminates Redis/RabbitMQ costs while maintaining full functionality
-</Card>
-
-<Card title="🧠 LLM-Optimized" href="/artemis/core/agents">
-  Native support for 50+ open-source models with intelligent detection and optimization
-</Card>
-
-<Card title="🌐 Truly Distributed" href="/artemis/distributed/overview">
-  Auto-scaling inference engines, environment orchestration, and fault-tolerant communication
+<Card title="Prism (Verification)" icon="shield" href="/loomlabs/loomos/advanced-features">
+  Safety, factuality, and bias testing tools integrated with the deployment pipeline.
 </Card>
 </CardGroup>
 
-## Quick Start
+## Get Started
 
-Get up and running in minutes:
+1. Read the [LoomOS Platform Overview](/loomlabs/loomos/platform-overview) to understand architecture and quickstart.
+2. Install the [SDK & CLI](/loomlabs/loomos/sdk-cli) to submit jobs and automate workflows.
+3. Run the quick demo in `examples/` to validate your environment.
 
-<CodeGroup>
-
-```bash Install
-pip install git+https://github.com/Noema-Research/ArtemisRL-Gym.git
-```
-
-```python Basic Training
-import asyncio
-from artemis import train_llm_grpo
-
-async def main():
-    results = await train_llm_grpo(
-        model_name="microsoft/DialoGPT-medium",
-        env_type="conversation",
-        num_episodes=100,
-        distributed=True
-    )
-    print(f"Training complete! Final reward: {results['final_reward']:.3f}")
-
-asyncio.run(main())
-```
-
-</CodeGroup>
-
-## What's Next?
+## Documentation
 
 <CardGroup cols={3}>
-<Card title="📚 Full Documentation" href="/artemis/introduction">
-  Complete guide to Artemis RL Gym features and capabilities
+<Card title="Platform Overview" href="/loomlabs/loomos/platform-overview">
+  Architecture, quickstart, and system diagram
 </Card>
-
-<Card title="⚡ Quick Start" href="/artemis/quickstart">
-  Get training in under 10 minutes
+<Card title="Core Modules" href="/loomlabs/loomos/core-modules">
+  LoomDB, Scheduler, Security, Marketplace
 </Card>
-
-<Card title="🔧 API Reference" href="/artemis/api-reference/introduction">
-  Comprehensive API documentation
+<Card title="RL System" href="/loomlabs/loomos/rl-system">
+  LoomRLGym, PPO, WEAVE, distributed RL
 </Card>
-
-<Card title="💡 Examples" href="/artemis/examples/overview">
-  Practical tutorials and use cases
+<Card title="Nexus System" href="/loomlabs/loomos/nexus-system">
+  Master/Worker, failover, LoomCtl API
 </Card>
-
-<Card title="🏗️ Core Components" href="/artemis/core/overview">
-  Learn about agents, environments, and algorithms
+<Card title="Blocks & Adapters" href="/loomlabs/loomos/blocks-adapters">
+  OpenAI, Hugging Face, Vision, Diffusion adapters
 </Card>
-
-<Card title="🌐 Distributed Training" href="/artemis/distributed/overview">
-  Scale across multiple nodes with fault tolerance
+<Card title="SDK & CLI" href="/loomlabs/loomos/sdk-cli">
+  Python SDK, job manifests, CLI usage
+</Card>
+<Card title="Examples & Tutorials" href="/loomlabs/loomos/examples-tutorials">
+  Quick demos, WEAVE examples
+</Card>
+<Card title="Advanced Features" href="/loomlabs/loomos/advanced-features">
+  Prism, Tapestry, Weaver
+</Card>
+<Card title="API Reference" href="/loomlabs/loomos/api-reference">
+  REST endpoints, Python client
+</Card>
+<Card title="Deployment Guide" href="/loomlabs/loomos/deployment-guide">
+  Local, Docker Compose, Kubernetes
 </Card>
 </CardGroup>
 
 ## Community & Support
 
 <CardGroup cols={2}>
-<Card title="GitHub Repository" icon="github" href="https://github.com/noema-research/artemis-rl-gym">
+<Card title="GitHub Repository" icon="github" href="https://github.com/loomlabs/loomos">
   Source code, issues, and contributions
 </Card>
-
-<Card title="Discord Community" icon="discord" href="https://discord.gg/artemis-rl">
+<Card title="Discord Community" icon="discord" href="https://discord.gg/loomos">
   Join our community for support and discussions
 </Card>
 </CardGroup>
@@ -114,6 +87,6 @@ asyncio.run(main())
 
 <div align="center">
 
-**Built with ❤️ by Noema Research for the open-source community**
+**Built with ❤️ by Loom Labs for the open-source community**
 
 </div>

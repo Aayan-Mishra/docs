@@ -1,0 +1,52 @@
+---
+title: "Examples & Tutorials"
+description: "Quick demos and WEAVE examples."
+---
+
+## Examples & Tutorials
+
+Examples included in the repository:
+
+- `examples/quick_demo.py` — minimal demo
+- `examples/weave_complete_demo.py` — WEAVE algorithm demo
+- `examples/normal_usage_patterns.py` — usage idioms
+
+Follow the code in `examples/` to run local demos and tests.
+
+### Running the quick demo (step-by-step)
+
+1. Start local cluster:
+
+```bash
+docker-compose up -d
+```
+
+2. Install dependencies and run demo:
+
+```bash
+pip install -e .
+python examples/quick_demo.py
+```
+
+3. Verify results:
+
+- Confirm console output indicates training completion
+- Use `loomos jobs list` to inspect job status
+
+### WEAVE demo notes
+
+- WEAVE demos can be compute-heavy. Use smaller node counts and reduced episode counts for local testing.
+
+### Quick demo
+
+`examples/quick_demo.py` demonstrates environment creation, WEAVE setup, and a short training loop.
+
+### WEAVE Demos
+
+`examples/weave_complete_demo.py` contains full WEAVE demos including Apollo-R1 multi-agent training.
+
+### How to run examples
+
+```bash
+python examples/quick_demo.py
+```
